@@ -1,0 +1,1624 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Professional Traffic Flow Simulator - Ultimate v8 with Collision Avoidance</title>
+    <style>
+        :root {
+            --ui-bg: rgba(255, 255, 255, 0.97);
+            --accent: #2ecc71;
+            --warning: #ff4757;
+            --text: #2c3e50;
+            --border: #d1d8e0;
+            --shadow: rgba(0, 0, 0, 0.12);
+        }
+        
+        * {
+            box-sizing: border-box;
+        }
+        
+        body {
+            margin: 0;
+            background: #f0f0f0;
+            color: var(--text);
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            overflow: hidden;
+        }
+        
+        canvas {
+            display: block;
+            background: #f8f9fa;
+            cursor: crosshair;
+            transform: scale(0.8);
+            transform-origin: top left;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+        
+        .panel {
+            position: absolute;
+            background: var(--ui-bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.08);
+            font-size: 12px;
+            font-family: 'Courier New', monospace;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+        
+        .panel.hidden {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+        }
+        
+        #dashboard {
+            left: 20px;
+            bottom: 20px;
+            width: 340px;
+            padding: 24px;
+            z-index: 100;
+            max-height: 75vh;
+            overflow-y: auto;
+        }
+        
+        #metrics {
+            top: 20px;
+            right: 20px;
+            width: 360px;
+            padding: 20px;
+            z-index: 100;
+            max-height: 85vh;
+            overflow-y: auto;
+        }
+        
+        #timeline {
+            bottom: 20px;
+            right: 20px;
+            width: 280px;
+            padding: 16px;
+            z-index: 100;
+        }
+        
+        #ui-toggle {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            width: 48px;
+            height: 48px;
+            background: var(--ui-bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            cursor: pointer;
+            z-index: 200;
+            font-size: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+        
+        #ui-toggle:hover {
+            border-color: var(--accent);
+            background: #f9fffb;
+            transform: scale(1.05);
+        }
+        
+        #ui-toggle:active {
+            transform: scale(0.95);
+        }
+        
+        .panel-header {
+            font-size: 13px;
+            font-weight: 800;
+            margin-bottom: 16px;
+            border-bottom: 2px solid #f1f2f6;
+            padding-bottom: 10px;
+            color: #a4b0be;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .ctrl-group {
+            margin-bottom: 20px;
+        }
+        
+        .label-box {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 11px;
+            margin-bottom: 8px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        
+        .val {
+            color: var(--accent);
+            font-weight: 700;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .val.warning { 
+            color: var(--warning); 
+        }
+        
+        input[type="range"] {
+            width: 100%;
+            height: 5px;
+            accent-color: var(--accent);
+            cursor: pointer;
+            border-radius: 3px;
+        }
+        
+        input[type="number"] {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 11px;
+            font-family: 'Courier New', monospace;
+            margin-top: 4px;
+        }
+        
+        select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 11px;
+            font-family: 'Courier New', monospace;
+            background: #ffffff;
+            cursor: pointer;
+            margin-bottom: 12px;
+        }
+        
+        button {
+            width: 100%;
+            padding: 12px;
+            background: #ffffff;
+            border: 1px solid var(--border);
+            color: var(--text);
+            cursor: pointer;
+            font-size: 11px;
+            border-radius: 6px;
+            font-weight: 600;
+            transition: all 0.2s ease;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+        
+        button:hover {
+            border-color: var(--accent);
+            background: #f9fffb;
+            transform: translateY(-1px);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        button.secondary {
+            background: #f8f9fa;
+            border-color: #e0e6ed;
+        }
+        
+        button.danger {
+            background: #ffe5e5;
+            border-color: var(--warning);
+            color: var(--warning);
+        }
+        
+        button.danger:hover {
+            background: #ffd4d4;
+        }
+        
+        .metric-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #f1f2f6;
+            font-size: 11px;
+        }
+        
+        .metric-row:last-child {
+            border-bottom: none;
+        }
+        
+        .metric-label {
+            color: #636e72;
+            font-weight: 600;
+        }
+        
+        .metric-value {
+            color: var(--accent);
+            font-weight: 700;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--accent);
+            margin-right: 6px;
+        }
+        
+        .indicator.inactive {
+            background: #bdc3c7;
+        }
+        
+        .indicator.warning {
+            background: var(--warning);
+            animation: pulse 1s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        #legend {
+            position: absolute;
+            bottom: 20px;
+            left: 360px;
+            background: var(--ui-bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 12px 16px;
+            z-index: 100;
+            font-size: 10px;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+            max-height: 180px;
+            overflow-y: auto;
+        }
+        
+        #legend.hidden {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin-right: 20px;
+            margin-bottom: 6px;
+        }
+        
+        .legend-color {
+            width: 12px;
+            height: 12px;
+            border-radius: 2px;
+            margin-right: 6px;
+        }
+        
+        #metrics::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        #metrics::-webkit-scrollbar-track {
+            background: #f1f2f6;
+            border-radius: 3px;
+        }
+        
+        #metrics::-webkit-scrollbar-thumb {
+            background: #d0d1d5;
+            border-radius: 3px;
+        }
+        
+        #metrics::-webkit-scrollbar-thumb:hover {
+            background: #9fa3a9;
+        }
+        
+        #dashboard::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        #dashboard::-webkit-scrollbar-track {
+            background: #f1f2f6;
+            border-radius: 3px;
+        }
+        
+        #dashboard::-webkit-scrollbar-thumb {
+            background: #d0d1d5;
+            border-radius: 3px;
+        }
+        
+        small {
+            color: #95a5a6;
+            display: block;
+            margin-top: 4px;
+        }
+
+        #interaction-hint {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--ui-bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 12px 20px;
+            z-index: 100;
+            font-size: 11px;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+            max-width: 400px;
+        }
+
+        #interaction-hint.hidden {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+
+<button id="ui-toggle" title="Toggle UI (Hide/Show) or Press H">👁️</button>
+
+<div id="metrics" class="panel">
+    <div class="panel-header">📊 Real-Time Metrics</div>
+    <div class="metric-row">
+        <span class="metric-label">Engine Status:</span>
+        <span class="metric-value"><span class="indicator"></span>IDM+MOBIL+CA+Physics</span>
+    </div>
+    <div class="metric-row">
+        <span class="metric-label">Active Vehicles:</span>
+        <span class="metric-value" id="count-val">0</span>
+    </div>
+    <div class="metric-row">
+        <span class="metric-label">Avg Velocity:</span>
+        <span class="metric-value" id="avg-vel">0.00</span> m/s
+    </div>
+    <div class="metric-row">
+        <span class="metric-label">System Flow:</span>
+        <span class="metric-value" id="flow-rate">0</span> veh/min
+    </div>
+    <div class="metric-row">
+        <span class="metric-label">Lane Changes/min:</span>
+        <span class="metric-value" id="lc-rate">0</span>
+    </div>
+    <div class="metric-row">
+        <span class="metric-label">Collisions Detected:</span>
+        <span class="metric-value" id="collision-count">0</span>
+    </div>
+    <div class="metric-row">
+        <span class="metric-label">Avg Spacing:</span>
+        <span class="metric-value" id="avg-spacing">0.0</span> m
+    </div>
+    <div class="metric-row">
+        <span class="metric-label">Density (veh/km):</span>
+        <span class="metric-value" id="density">0</span>
+    </div>
+    <div style="border-top: 2px solid #f1f2f6; margin: 12px 0; padding-top: 12px;">
+        <div class="panel-header">Congestion Alert</div>
+    </div>
+    <div class="metric-row">
+        <span class="metric-label">Throttled:</span>
+        <span class="metric-value" id="throttled-count">0</span>
+    </div>
+    <div class="metric-row">
+        <span class="metric-label">Status:</span>
+        <span class="metric-value"><span class="indicator" id="congestion-indicator"></span><span id="congestion-status">Normal</span></span>
+    </div>
+    <div style="border-top: 2px solid #f1f2f6; margin: 12px 0; padding-top: 12px;">
+        <div class="panel-header">Signal State</div>
+    </div>
+    <div class="metric-row">
+        <span class="metric-label">H-Lane (E/W):</span>
+        <span class="metric-value" id="sig-1">🟢 GREEN</span>
+    </div>
+    <div class="metric-row">
+        <span class="metric-label">V-Lane (N/S):</span>
+        <span class="metric-value" id="sig-2">🔴 RED</span>
+    </div>
+    <div class="metric-row">
+        <span class="metric-label">Cycle Progress:</span>
+        <span class="metric-value" id="cycle-progress">0%</span>
+    </div>
+    <div style="border-top: 2px solid #f1f2f6; margin: 12px 0; padding-top: 12px;">
+        <div class="panel-header">Collision Physics</div>
+    </div>
+    <div class="metric-row">
+        <span class="metric-label">Active Bounces:</span>
+        <span class="metric-value" id="bounce-count">0</span>
+    </div>
+    <div class="metric-row">
+        <span class="metric-label">Restitution:</span>
+        <span class="metric-value" id="restitution">0.80</span>
+    </div>
+    <div style="border-top: 2px solid #f1f2f6; margin: 12px 0; padding-top: 12px;">
+        <div class="panel-header">Performance</div>
+    </div>
+    <div class="metric-row">
+        <span class="metric-label">FPS:</span>
+        <span class="metric-value" id="fps-val">60</span>
+    </div>
+    <div class="metric-row">
+        <span class="metric-label">Computation:</span>
+        <span class="metric-value" id="comp-time">0.0</span> ms
+    </div>
+</div>
+
+<div id="dashboard" class="panel">
+    <div class="panel-header">⚙️ Control Panel</div>
+    
+    <div class="ctrl-group">
+        <div class="label-box">
+            <span>Map Selection</span>
+        </div>
+        <select id="map-select" onchange="app.changeMap(this.value)">
+            <option value="intersection">Standard Intersection</option>
+            <option value="overpass">Dual Overpass (6 Lanes)</option>
+        </select>
+    </div>
+    
+    <div class="ctrl-group">
+        <div class="label-box">
+            <span>Traffic Density</span>
+            <span id="v-spawn" class="val">Medium</span>
+        </div>
+        <input type="range" id="spawn-range" min="100" max="1500" value="700">
+        <small>Adjust spawn interval</small>
+    </div>
+    
+    <div class="ctrl-group">
+        <div class="label-box">
+            <span>Target Velocity (m/s)</span>
+            <span id="target-vel" class="val">3.5</span>
+        </div>
+        <input type="range" id="target-vel-range" min="1.5" max="5.0" step="0.1" value="3.5">
+    </div>
+    
+    <div class="ctrl-group">
+        <div class="label-box">
+            <span>MOBIL Threshold</span>
+            <span id="lc-thresh" class="val">0.30</span>
+        </div>
+        <input type="range" id="lc-threshold-range" min="0.05" max="1.0" step="0.05" value="0.30">
+    </div>
+    
+    <div class="ctrl-group">
+        <button onclick="app.forceSignalSwitch()">⚡ Manual Signal Switch</button>
+        <button class="secondary" onclick="app.resetSimulation()">🔄 Reset Simulation</button>
+        <button class="danger" onclick="app.crashEvent()">💥 Trigger Incident</button>
+    </div>
+    
+    <div style="border-top: 2px solid #f1f2f6; margin: 16px -24px -24px; padding: 16px 24px 0;">
+        <div class="panel-header">Signal Timing</div>
+        <div class="ctrl-group" style="margin-bottom: 0;">
+            <div class="label-box">
+                <span>Green Duration (s)</span>
+                <span class="val" id="green-dur">9.0</span>
+            </div>
+            <input type="number" id="green-input" min="3" max="30" value="9">
+        </div>
+    </div>
+</div>
+
+<div id="timeline" class="panel">
+    <div class="panel-header">⏱️ Simulation Time</div>
+    <div style="text-align: center; padding: 8px 0;">
+        <div style="font-size: 20px; font-weight: 700; color: var(--accent);" id="sim-time">00:00:00</div>
+        <div style="font-size: 11px; color: #95a5a6; margin-top: 6px;" id="frame-count">Frame: 0</div>
+    </div>
+</div>
+
+<div id="legend">
+    <div class="legend-item">
+        <div class="legend-color" style="background: #45aaf2;"></div>
+        <span>Vehicle (Normal)</span>
+    </div>
+    <div class="legend-item">
+        <div class="legend-color" style="background: #ff9800;"></div>
+        <span>Throttled</span>
+    </div>
+    <div class="legend-item">
+        <div class="legend-color" style="background: #ff4757;"></div>
+        <span>Colliding/Bouncing</span>
+    </div>
+</div>
+
+<div id="interaction-hint">
+    💡 Click vehicles to throttle | Press H to hide UI | Space to switch signals | Physics prevents overlapping
+</div>
+
+<canvas id="trafficSim"></canvas>
+
+<script>
+/**
+ * Professional Traffic Flow Simulator v8.2 - PHYSICS ENGINE
+ * 完整碰撞物理：边缘碰到边缘，反弹回来。绝对不重叠！
+ */
+
+const CONFIG = {
+    road: 240,
+    lane: 60,
+    stopOffset: 70,
+    
+    car: {
+        l: 46,
+        w: 23,
+        targetV: 3.5,
+        maxA: 0.15,
+        decel: 0.28,
+        emergency: 0.35,
+        safeDist: 35,
+        timeHeadway: 1.6,
+        lc_threshold: 0.20,
+        lc_duration: 50,
+        lc_cooldown: 60
+    },
+    
+    cycle: {
+        green: 9000,
+        yellow: 3000
+    },
+    
+    physics: {
+        collisionMargin: 2,
+        restitution: 0.80,
+        dampingFactor: 0.95,
+        minSeparationImpulse: 0.1
+    }
+};
+
+const app = {
+    canvas: document.getElementById('trafficSim'),
+    ctx: null,
+    
+    currentMap: 'intersection',
+    vehicles: [],
+    incidentVehicles: [],
+    lightPhase: 0,
+    lastSwitch: Date.now(),
+    spawnDelay: 700,
+    
+    frameCount: 0,
+    startTime: Date.now(),
+    laneChangesThisSecond: 0,
+    collisionsThisSecond: 0,
+    spawnedCount: 0,
+    lastFpsUpdate: Date.now(),
+    fps: 60,
+    computationTime: 0,
+    
+    uiVisible: true,
+    selectedVehicle: null,
+    
+    init() {
+        this.ctx = this.canvas.getContext('2d', { alpha: false, willReadFrequently: false });
+        
+        window.addEventListener('resize', () => this.onResize());
+        this.canvas.addEventListener('click', (e) => this.handleCanvasClick(e));
+        this.onResize();
+        
+        document.getElementById('spawn-range').addEventListener('input', (e) => this.updateSpawnRate(e));
+        document.getElementById('target-vel-range').addEventListener('input', (e) => this.updateTargetVel(e));
+        document.getElementById('lc-threshold-range').addEventListener('input', (e) => this.updateLCThreshold(e));
+        document.getElementById('green-input').addEventListener('change', (e) => this.updateGreenTime(e));
+        document.getElementById('ui-toggle').addEventListener('click', () => this.toggleUI());
+        
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'h' || e.key === 'H') this.toggleUI();
+            if (e.key === ' ') this.forceSignalSwitch();
+        });
+        
+        this.startSpawning();
+        this.loop();
+    },
+    
+    handleCanvasClick(e) {
+        const rect = this.canvas.getBoundingClientRect();
+        const clickX = (e.clientX - rect.left) / 0.8;
+        const clickY = (e.clientY - rect.top) / 0.8;
+        
+        let closestVehicle = null;
+        let minDist = 50;
+        
+        for (let v of this.vehicles) {
+            const dist = Math.hypot(v.x - clickX, v.y - clickY);
+            if (dist < minDist) {
+                minDist = dist;
+                closestVehicle = v;
+            }
+        }
+        
+        if (closestVehicle) {
+            closestVehicle.isThrottled = !closestVehicle.isThrottled;
+        }
+    },
+    
+    toggleUI() {
+        this.uiVisible = !this.uiVisible;
+        const panels = document.querySelectorAll('.panel');
+        const legend = document.getElementById('legend');
+        const hint = document.getElementById('interaction-hint');
+        
+        panels.forEach(p => {
+            if (this.uiVisible) {
+                p.classList.remove('hidden');
+            } else {
+                p.classList.add('hidden');
+            }
+        });
+        
+        if (this.uiVisible) {
+            legend.classList.remove('hidden');
+            hint.classList.remove('hidden');
+        } else {
+            legend.classList.add('hidden');
+            hint.classList.add('hidden');
+        }
+    },
+    
+    changeMap(mapName) {
+        this.currentMap = mapName;
+        this.resetSimulation();
+    },
+    
+    crashEvent() {
+        if (this.vehicles.length > 0) {
+            const randomIdx = Math.floor(Math.random() * this.vehicles.length);
+            const vehicle = this.vehicles[randomIdx];
+            vehicle.isIncident = true;
+            vehicle.v = 0;
+            this.incidentVehicles.push(vehicle);
+            setTimeout(() => {
+                vehicle.isIncident = false;
+                this.incidentVehicles = this.incidentVehicles.filter(v => v !== vehicle);
+            }, 8000);
+        }
+    },
+    
+    onResize() {
+        this.canvas.width = window.innerWidth / 0.8;
+        this.canvas.height = window.innerHeight / 0.8;
+    },
+    
+    updateSpawnRate(e) {
+        this.spawnDelay = 1600 - e.target.value;
+        const labels = ['Low', 'Medium', 'High', 'Very High'];
+        const idx = Math.floor((e.target.value - 100) / 350);
+        document.getElementById('v-spawn').textContent = labels[Math.min(idx, 3)];
+    },
+    
+    updateTargetVel(e) {
+        CONFIG.car.targetV = parseFloat(e.target.value);
+        document.getElementById('target-vel').textContent = CONFIG.car.targetV.toFixed(1);
+    },
+    
+    updateLCThreshold(e) {
+        CONFIG.car.lc_threshold = parseFloat(e.target.value);
+        document.getElementById('lc-thresh').textContent = parseFloat(e.target.value).toFixed(2);
+    },
+    
+    updateGreenTime(e) {
+        CONFIG.cycle.green = parseInt(e.target.value) * 1000;
+        document.getElementById('green-dur').textContent = (parseInt(e.target.value)).toFixed(1);
+    },
+    
+    forceSignalSwitch() {
+        this.lightPhase = (this.lightPhase + 1) % 4;
+        this.lastSwitch = Date.now();
+    },
+    
+    resetSimulation() {
+        this.vehicles = [];
+        this.incidentVehicles = [];
+        this.lightPhase = 0;
+        this.lastSwitch = Date.now();
+        this.frameCount = 0;
+        this.startTime = Date.now();
+        this.spawnedCount = 0;
+        this.selectedVehicle = null;
+        this.collisionsThisSecond = 0;
+    },
+    
+    startSpawning() {
+        const spawn = () => {
+            if (this.currentMap === 'intersection') {
+                const dir = ['E', 'W', 'S', 'N'][Math.floor(Math.random() * 4)];
+                const lane = Math.floor(Math.random() * 2);
+                const vehicle = new Vehicle(dir, lane, 'intersection');
+                
+                let safe = true;
+                for (let v of this.vehicles) {
+                    if (Math.hypot(v.x - vehicle.x, v.y - vehicle.y) < 100) {
+                        safe = false;
+                        break;
+                    }
+                }
+                
+                if (safe && this.vehicles.length < 100) {
+                    this.vehicles.push(vehicle);
+                    this.spawnedCount++;
+                }
+            } else if (this.currentMap === 'overpass') {
+                const isRight = Math.random() > 0.5;
+                const lane = isRight ? Math.floor(Math.random() * 3) : 3 + Math.floor(Math.random() * 3);
+                const vehicle = new Vehicle('straight', lane, 'overpass');
+                
+                let safe = true;
+                for (let v of this.vehicles) {
+                    if (Math.hypot(v.x - vehicle.x, v.y - vehicle.y) < 100) {
+                        safe = false;
+                        break;
+                    }
+                }
+                
+                if (safe && this.vehicles.length < 200) {
+                    this.vehicles.push(vehicle);
+                    this.spawnedCount++;
+                }
+            }
+            
+            setTimeout(spawn, this.spawnDelay + Math.random() * 400);
+        };
+        spawn();
+    },
+    
+    detectAndResolveCollisions() {
+        this.collisionsThisSecond = 0;
+        const n = this.vehicles.length;
+        
+        for (let i = 0; i < n; i++) {
+            for (let j = i + 1; j < n; j++) {
+                const v1 = this.vehicles[i];
+                const v2 = this.vehicles[j];
+                
+                const dx = v2.x - v1.x;
+                const dy = v2.y - v1.y;
+                const dist = Math.hypot(dx, dy);
+                
+                // === 获取碰撞box的边界 ===
+                const box1 = v1.getCollisionBox();
+                const box2 = v2.getCollisionBox();
+                
+                // === 轴对齐包围盒（AABB）碰撞检测 ===
+                if (box1.right >= box2.left && box1.left <= box2.right &&
+                    box1.bottom >= box2.top && box1.top <= box2.bottom) {
+                    
+                    this.collisionsThisSecond++;
+                    v1.isColliding = true;
+                    v2.isColliding = true;
+                    
+                    // === 分离碰撞的车子 ===
+                    const overlap = Math.min(
+                        box1.right - box2.left,
+                        box2.right - box1.left,
+                        box1.bottom - box2.top,
+                        box1.top - box2.bottom
+                    );
+                    
+                    if (overlap > 0) {
+                        // 计算分离方向
+                        let sepX = 0, sepY = 0;
+                        
+                        if (Math.abs(dx) > Math.abs(dy)) {
+                            // 水平分离
+                            if (dx > 0) {
+                                sepX = overlap / 2 + CONFIG.physics.collisionMargin;
+                                sepY = 0;
+                            } else {
+                                sepX = -(overlap / 2 + CONFIG.physics.collisionMargin);
+                                sepY = 0;
+                            }
+                        } else {
+                            // 竖直分离
+                            if (dy > 0) {
+                                sepX = 0;
+                                sepY = overlap / 2 + CONFIG.physics.collisionMargin;
+                            } else {
+                                sepX = 0;
+                                sepY = -(overlap / 2 + CONFIG.physics.collisionMargin);
+                            }
+                        }
+                        
+                        // 移动两个车子
+                        v1.x -= sepX;
+                        v1.y -= sepY;
+                        v2.x += sepX;
+                        v2.y += sepY;
+                    }
+                    
+                    // === 反弹速度 ===
+                    const rel_vx = v2.vx - v1.vx || (Math.random() - 0.5) * 0.2;
+                    const rel_vy = v2.vy - v1.vy || (Math.random() - 0.5) * 0.2;
+                    
+                    if (Math.abs(dx) > Math.abs(dy)) {
+                        // 水平碰撞
+                        if (dx > 0) {
+                            v1.vx = -Math.abs(v1.vx) * CONFIG.physics.restitution * 0.5;
+                            v2.vx = Math.abs(v2.vx) * CONFIG.physics.restitution * 0.5;
+                        } else {
+                            v1.vx = Math.abs(v1.vx) * CONFIG.physics.restitution * 0.5;
+                            v2.vx = -Math.abs(v2.vx) * CONFIG.physics.restitution * 0.5;
+                        }
+                    } else {
+                        // 竖直碰撞
+                        if (dy > 0) {
+                            v1.vy = -Math.abs(v1.vy) * CONFIG.physics.restitution * 0.5;
+                            v2.vy = Math.abs(v2.vy) * CONFIG.physics.restitution * 0.5;
+                        } else {
+                            v1.vy = Math.abs(v1.vy) * CONFIG.physics.restitution * 0.5;
+                            v2.vy = -Math.abs(v2.vy) * CONFIG.physics.restitution * 0.5;
+                        }
+                    }
+                }
+            }
+        }
+    },
+    
+    loop() {
+        const frameStart = performance.now();
+        
+        const now = Date.now();
+        const dur = (this.lightPhase % 2 === 1) ? CONFIG.cycle.yellow : CONFIG.cycle.green;
+        if (now - this.lastSwitch > dur) {
+            this.lightPhase = (this.lightPhase + 1) % 4;
+            this.lastSwitch = now;
+        }
+        
+        this.vehicles = this.vehicles.filter(v => {
+            if (this.currentMap === 'intersection') {
+                return v.x > -200 && v.x < this.canvas.width + 200 &&
+                       v.y > -200 && v.y < this.canvas.height + 200;
+            } else {
+                return v.x > -200 && v.x < this.canvas.width + 200;
+            }
+        });
+        
+        this.laneChangesThisSecond = 0;
+        
+        this.vehicles.forEach(v => {
+            const hadLC = v.isChangingLane;
+            v.update(this);
+            if (!hadLC && v.isChangingLane) this.laneChangesThisSecond++;
+        });
+        
+        // === 碰撞检测和物理解决 ===
+        this.detectAndResolveCollisions();
+        
+        // === 清除碰撞标志 ===
+        this.vehicles.forEach(v => v.isColliding = false);
+        
+        if (this.currentMap === 'intersection') {
+            this.drawIntersection();
+        } else if (this.currentMap === 'overpass') {
+            this.drawOverpass();
+        }
+        
+        this.vehicles.forEach(v => v.draw(this.ctx));
+        
+        this.updateMetrics();
+        
+        const frameEnd = performance.now();
+        this.computationTime = frameEnd - frameStart;
+        this.frameCount++;
+        
+        requestAnimationFrame(() => this.loop());
+    },
+    
+    updateMetrics() {
+        const now = Date.now();
+        if (now - this.lastFpsUpdate > 1000) {
+            this.fps = this.frameCount;
+            this.frameCount = 0;
+            this.lastFpsUpdate = now;
+        }
+        
+        const count = this.vehicles.length;
+        const throttledCount = this.vehicles.filter(v => v.isThrottled).length;
+        const bouncingCount = this.vehicles.filter(v => v.isColliding).length;
+        const avgVel = count > 0 ? this.vehicles.reduce((s, v) => s + v.v, 0) / count : 0;
+        const flowRate = Math.round((this.spawnedCount / (now - this.startTime)) * 60000);
+        
+        document.getElementById('count-val').textContent = count;
+        document.getElementById('throttled-count').textContent = throttledCount;
+        document.getElementById('collision-count').textContent = this.collisionsThisSecond;
+        document.getElementById('bounce-count').textContent = bouncingCount;
+        document.getElementById('avg-vel').textContent = avgVel.toFixed(2);
+        document.getElementById('flow-rate').textContent = flowRate;
+        document.getElementById('lc-rate').textContent = Math.round(this.laneChangesThisSecond * 60);
+        document.getElementById('fps-val').textContent = this.fps;
+        document.getElementById('comp-time').textContent = this.computationTime.toFixed(1);
+        
+        const indicator = document.getElementById('congestion-indicator');
+        const status = document.getElementById('congestion-status');
+        if (throttledCount > 5 || avgVel < 1.5) {
+            indicator.className = 'indicator warning';
+            status.textContent = '🚨 CRITICAL';
+        } else if (throttledCount > 2 || avgVel < 2.5) {
+            indicator.className = 'indicator';
+            status.textContent = '⚠️ Heavy';
+        } else {
+            indicator.className = 'indicator';
+            status.textContent = '✓ Normal';
+        }
+        
+        const sigH = this.lightPhase === 0 ? '🟢 GREEN' : (this.lightPhase === 1 ? '🟡 YELLOW' : '🔴 RED');
+        const sigV = this.lightPhase === 2 ? '🟢 GREEN' : (this.lightPhase === 3 ? '🟡 YELLOW' : '🔴 RED');
+        document.getElementById('sig-1').textContent = sigH;
+        document.getElementById('sig-2').textContent = sigV;
+        
+        const cycleProgress = ((now - this.lastSwitch) / (this.lightPhase % 2 === 1 ? CONFIG.cycle.yellow : CONFIG.cycle.green)) * 100;
+        document.getElementById('cycle-progress').textContent = Math.min(100, cycleProgress.toFixed(0)) + '%';
+        
+        const elapsed = Math.floor((now - this.startTime) / 1000);
+        const h = Math.floor(elapsed / 3600);
+        const m = Math.floor((elapsed % 3600) / 60);
+        const s = elapsed % 60;
+        document.getElementById('sim-time').textContent = 
+            `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+        
+        if (count > 1) {
+            let totalSpacing = 0;
+            let pairCount = 0;
+            for (let i = 0; i < Math.min(count, 30); i++) {
+                for (let j = i + 1; j < Math.min(count, 30); j++) {
+                    const d = Math.hypot(this.vehicles[i].x - this.vehicles[j].x, 
+                                        this.vehicles[i].y - this.vehicles[j].y);
+                    totalSpacing += d;
+                    pairCount++;
+                }
+            }
+            const avgSpacing = pairCount > 0 ? totalSpacing / pairCount : 0;
+            const density = count > 0 ? (1000 / Math.max(avgSpacing, 10)) : 0;
+            document.getElementById('avg-spacing').textContent = avgSpacing.toFixed(1);
+            document.getElementById('density').textContent = Math.round(density);
+        }
+    },
+    
+    drawIntersection() {
+        const mx = this.canvas.width / 2;
+        const my = this.canvas.height / 2;
+        const rw = CONFIG.road / 2;
+        
+        this.ctx.fillStyle = '#f8f9fa';
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        
+        this.ctx.fillStyle = '#dfe4ea';
+        this.ctx.fillRect(0, my - rw, this.canvas.width, CONFIG.road);
+        this.ctx.fillRect(mx - rw, 0, CONFIG.road, this.canvas.height);
+        
+        this.ctx.strokeStyle = '#ffffff';
+        this.ctx.lineWidth = 2;
+        this.ctx.setLineDash([20, 25]);
+        
+        this.ctx.beginPath();
+        this.ctx.moveTo(0, my - rw + CONFIG.lane);
+        this.ctx.lineTo(mx - rw, my - rw + CONFIG.lane);
+        this.ctx.moveTo(mx + rw, my - rw + CONFIG.lane);
+        this.ctx.lineTo(this.canvas.width, my - rw + CONFIG.lane);
+        this.ctx.stroke();
+        
+        this.ctx.beginPath();
+        this.ctx.moveTo(mx - rw + CONFIG.lane, 0);
+        this.ctx.lineTo(mx - rw + CONFIG.lane, my - rw);
+        this.ctx.moveTo(mx - rw + CONFIG.lane, my + rw);
+        this.ctx.lineTo(mx - rw + CONFIG.lane, this.canvas.height);
+        this.ctx.stroke();
+        
+        this.ctx.setLineDash([]);
+        
+        this.ctx.strokeStyle = '#eccc68';
+        this.ctx.lineWidth = 3;
+        const gap = rw + 80;
+        
+        this.ctx.beginPath();
+        this.ctx.moveTo(0, my - 2);
+        this.ctx.lineTo(mx - gap, my - 2);
+        this.ctx.moveTo(mx + gap, my - 2);
+        this.ctx.lineTo(this.canvas.width, my - 2);
+        this.ctx.moveTo(0, my + 2);
+        this.ctx.lineTo(mx - gap, my + 2);
+        this.ctx.moveTo(mx + gap, my + 2);
+        this.ctx.lineTo(this.canvas.width, my + 2);
+        this.ctx.stroke();
+        
+        this.ctx.beginPath();
+        this.ctx.moveTo(mx - 2, 0);
+        this.ctx.lineTo(mx - 2, my - gap);
+        this.ctx.moveTo(mx - 2, my + gap);
+        this.ctx.lineTo(mx - 2, this.canvas.height);
+        this.ctx.moveTo(mx + 2, 0);
+        this.ctx.lineTo(mx + 2, my - gap);
+        this.ctx.moveTo(mx + 2, my + gap);
+        this.ctx.lineTo(mx + 2, this.canvas.height);
+        this.ctx.stroke();
+        
+        this.ctx.fillStyle = '#ffffff';
+        const drawCrossing = (x, y, isHorizontal, size) => {
+            for (let i = 10; i < size; i += 25) {
+                if (isHorizontal) {
+                    this.ctx.fillRect(x + i, y, 10, 40);
+                } else {
+                    this.ctx.fillRect(x, y + i, 40, 10);
+                }
+            }
+        };
+        drawCrossing(mx - rw, my - rw - 45, true, CONFIG.road);
+        drawCrossing(mx - rw, my + rw + 5, true, CONFIG.road);
+        drawCrossing(mx - rw - 45, my - rw, false, CONFIG.road);
+        drawCrossing(mx + rw + 5, my - rw, false, CONFIG.road);
+        
+        const d = CONFIG.road / 2 + 80;
+        const signals = [
+            { x: mx - d, y: my + 55, isH: true },
+            { x: mx + d, y: my - 55, isH: true },
+            { x: mx - 55, y: my - d, isH: false },
+            { x: mx + 55, y: my + d, isH: false }
+        ];
+        
+        signals.forEach(s => {
+            let color;
+            if (s.isH) {
+                color = this.lightPhase === 0 ? '#2ed573' : (this.lightPhase === 1 ? '#eccc68' : '#ff4757');
+            } else {
+                color = this.lightPhase === 2 ? '#2ed573' : (this.lightPhase === 3 ? '#eccc68' : '#ff4757');
+            }
+            
+            this.ctx.fillStyle = color;
+            this.ctx.beginPath();
+            this.ctx.arc(s.x, s.y, 12, 0, Math.PI * 2);
+            this.ctx.fill();
+            
+            this.ctx.fillStyle = color + '33';
+            this.ctx.beginPath();
+            this.ctx.arc(s.x, s.y, 18, 0, Math.PI * 2);
+            this.ctx.fill();
+        });
+    },
+    
+    drawOverpass() {
+        const my = this.canvas.height / 2;
+        const laneW = CONFIG.lane;
+        const roadHeight = laneW * 6;
+        
+        this.ctx.fillStyle = '#f8f9fa';
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        
+        this.ctx.fillStyle = '#d4d9e3';
+        const roadTop = my - roadHeight / 2;
+        this.ctx.fillRect(0, roadTop, this.canvas.width, roadHeight);
+        
+        this.ctx.strokeStyle = '#ffffff';
+        this.ctx.lineWidth = 2;
+        this.ctx.setLineDash([20, 25]);
+        
+        for (let i = 1; i < 6; i++) {
+            const y = roadTop + laneW * i;
+            this.ctx.beginPath();
+            this.ctx.moveTo(0, y);
+            this.ctx.lineTo(this.canvas.width, y);
+            this.ctx.stroke();
+        }
+        
+        this.ctx.setLineDash([]);
+        
+        this.ctx.strokeStyle = '#eccc68';
+        this.ctx.lineWidth = 3;
+        
+        this.ctx.beginPath();
+        this.ctx.moveTo(0, roadTop);
+        this.ctx.lineTo(this.canvas.width, roadTop);
+        this.ctx.stroke();
+        
+        this.ctx.beginPath();
+        this.ctx.moveTo(0, roadTop + roadHeight);
+        this.ctx.lineTo(this.canvas.width, roadTop + roadHeight);
+        this.ctx.stroke();
+        
+        const centerY = roadTop + laneW * 3;
+        this.ctx.beginPath();
+        this.ctx.moveTo(0, centerY - 2);
+        this.ctx.lineTo(this.canvas.width, centerY - 2);
+        this.ctx.stroke();
+        
+        this.ctx.beginPath();
+        this.ctx.moveTo(0, centerY + 2);
+        this.ctx.lineTo(this.canvas.width, centerY + 2);
+        this.ctx.stroke();
+    }
+};
+
+class Vehicle {
+    constructor(dir, lane, mapType) {
+        this.id = Math.random();
+        this.dir = dir;
+        this.lane = lane;
+        this.currentLane = lane;
+        this.mapType = mapType;
+        this.color = this.getColor();
+        
+        this.v = 2.0;
+        this.vx = 0;
+        this.vy = 0;
+        this.a = 0;
+        this.steeringAngle = 0;
+        
+        this.isChangingLane = false;
+        this.lc_progress = 0;
+        this.lc_sourceLane = lane;
+        this.lc_cooldown = 0;
+        
+        this.passedStopLine = false;
+        this.isThrottled = false;
+        this.throttleDecel = 0.25;
+        this.isIncident = false;
+        this.isColliding = false;
+        
+        this.threatCounter = 0;
+        this.evasionMode = false;
+        
+        this.initPosition();
+    }
+    
+    getColor() {
+        const colors = ['#45aaf2', '#4b7bec', '#2d98da', '#3867d6', '#778ca3', '#4b6584'];
+        return colors[Math.floor(Math.random() * colors.length)];
+    }
+    
+    initPosition() {
+        const mx = app.canvas.width / 2;
+        const my = app.canvas.height / 2;
+        
+        if (this.mapType === 'intersection') {
+            const off = (this.lane + 0.5) * CONFIG.lane;
+            
+            switch (this.dir) {
+                case 'E':
+                    this.x = -100;
+                    this.y = my + off;
+                    break;
+                case 'W':
+                    this.x = app.canvas.width + 100;
+                    this.y = my - off;
+                    break;
+                case 'S':
+                    this.x = mx + off;
+                    this.y = -100;
+                    break;
+                case 'N':
+                    this.x = mx - off;
+                    this.y = app.canvas.height + 100;
+                    break;
+            }
+        } else if (this.mapType === 'overpass') {
+            const laneW = CONFIG.lane;
+            const roadHeight = laneW * 6;
+            const roadTop = my - roadHeight / 2;
+            const off = (this.lane + 0.5) * laneW;
+            
+            if (this.lane < 3) {
+                this.x = -100;
+                this.direction = 1;
+            } else {
+                this.x = app.canvas.width + 100;
+                this.direction = -1;
+            }
+            this.y = roadTop + off;
+        }
+    }
+    
+    getCollisionBox() {
+        const half_l = CONFIG.car.l / 2;
+        const half_w = CONFIG.car.w / 2;
+        
+        let angle = 0;
+        if (this.mapType === 'intersection') {
+            angle = { 'E': 0, 'W': Math.PI, 'S': Math.PI / 2, 'N': -Math.PI / 2 }[this.dir] + this.steeringAngle;
+        } else {
+            angle = this.direction === 1 ? 0 : Math.PI;
+        }
+        
+        const cos = Math.cos(angle);
+        const sin = Math.sin(angle);
+        
+        const corners = [
+            { x: half_l * cos - half_w * sin, y: half_l * sin + half_w * cos },
+            { x: -half_l * cos - half_w * sin, y: -half_l * sin + half_w * cos },
+            { x: -half_l * cos + half_w * sin, y: -half_l * sin - half_w * cos },
+            { x: half_l * cos + half_w * sin, y: half_l * sin - half_w * cos }
+        ];
+        
+        let left = Infinity, right = -Infinity, top = Infinity, bottom = -Infinity;
+        
+        corners.forEach(c => {
+            const wx = this.x + c.x;
+            const wy = this.y + c.y;
+            left = Math.min(left, wx);
+            right = Math.max(right, wx);
+            top = Math.min(top, wy);
+            bottom = Math.max(bottom, wy);
+        });
+        
+        return { left, right, top, bottom };
+    }
+    
+    getNeighbors(laneIndex) {
+        let front = { dist: 3000, v: 0 };
+        let back = { dist: 3000, v: 0 };
+        
+        app.vehicles.forEach(other => {
+            if (other.id === this.id || other.lane !== laneIndex) return;
+            
+            if (this.mapType === 'intersection' && other.dir !== this.dir) return;
+            
+            let d = 0;
+            if (this.mapType === 'intersection') {
+                if (this.dir === 'E') d = other.x - this.x;
+                else if (this.dir === 'W') d = this.x - other.x;
+                else if (this.dir === 'S') d = other.y - this.y;
+                else if (this.dir === 'N') d = this.y - other.y;
+            } else if (this.mapType === 'overpass') {
+                if (this.direction === 1) d = other.x - this.x;
+                else d = this.x - other.x;
+            }
+            
+            if (d > 0 && d < front.dist) {
+                front.dist = Math.max(0, d - CONFIG.car.l);
+                front.v = other.v;
+            }
+            if (d < 0 && Math.abs(d) < back.dist) {
+                back.dist = Math.max(0, Math.abs(d) - CONFIG.car.l);
+                back.v = other.v;
+            }
+        });
+        
+        return { front, back };
+    }
+    
+    checkFrontForPerpendicularVehicle() {
+        const mx = app.canvas.width / 2;
+        const my = app.canvas.height / 2;
+        const rw = CONFIG.road / 2;
+        const range = 70;
+        
+        const intersectionBox = {
+            left: mx - rw - 80,
+            right: mx + rw + 80,
+            top: my - rw - 80,
+            bottom: my + rw + 80
+        };
+        
+        const isHorizontal = this.dir === 'E' || this.dir === 'W';
+        
+        for (let other of app.vehicles) {
+            if (other.id === this.id) continue;
+            
+            const otherIsHorizontal = other.dir === 'E' || other.dir === 'W';
+            
+            if ((isHorizontal && otherIsHorizontal) || (!isHorizontal && !otherIsHorizontal)) continue;
+            
+            const inIntersection = other.x >= intersectionBox.left && other.x <= intersectionBox.right &&
+                                  other.y >= intersectionBox.top && other.y <= intersectionBox.bottom;
+            
+            if (!inIntersection) continue;
+            
+            let isInFrontPath = false;
+            
+            if (isHorizontal) {
+                if (this.dir === 'E') {
+                    isInFrontPath = other.x > this.x - 50 && other.x < this.x + range;
+                } else {
+                    isInFrontPath = other.x < this.x + 50 && other.x > this.x - range;
+                }
+                isInFrontPath = isInFrontPath && Math.abs(other.y - this.y) < 120;
+            } else {
+                if (this.dir === 'S') {
+                    isInFrontPath = other.y > this.y - 50 && other.y < this.y + range;
+                } else {
+                    isInFrontPath = other.y < this.y + 50 && other.y > this.y - range;
+                }
+                isInFrontPath = isInFrontPath && Math.abs(other.x - this.x) < 120;
+            }
+            
+            if (isInFrontPath) {
+                return other;
+            }
+        }
+        
+        return null;
+    }
+    
+    canChangeLaneToEvade(targetLane) {
+        const neighbors = this.getNeighbors(targetLane);
+        const minSafeDistance = 60;
+        
+        return neighbors.back.dist > minSafeDistance && neighbors.front.dist > minSafeDistance;
+    }
+    
+    calculateAccel(v, sFront, vFront) {
+        if (sFront < 0) return -CONFIG.car.emergency;
+        
+        const vRatio = v / Math.max(CONFIG.car.targetV, 0.1);
+        const freeFlow = 1 - Math.pow(vRatio, 4);
+        
+        const sStar = CONFIG.car.safeDist + 
+                     Math.max(0, v * CONFIG.car.timeHeadway + 
+                             (v * (v - vFront)) / (2 * Math.sqrt(CONFIG.car.maxA * CONFIG.car.decel)));
+        
+        const following = Math.pow(sStar / Math.max(sFront, 0.1), 2);
+        
+        return CONFIG.car.maxA * (freeFlow - following);
+    }
+    
+    update(app) {
+        if (this.mapType === 'intersection') {
+            this.updateIntersection(app);
+        } else if (this.mapType === 'overpass') {
+            this.updateOverpass(app);
+        }
+    }
+    
+    updateIntersection(app) {
+        const mx = app.canvas.width / 2;
+        const my = app.canvas.height / 2;
+        const stopLine = CONFIG.road / 2 + CONFIG.stopOffset;
+        
+        const isH = this.dir === 'E' || this.dir === 'W';
+        const posToMid = isH ? (this.dir === 'E' ? mx - this.x : this.x - mx) : 
+                              (this.dir === 'S' ? my - this.y : this.y - my);
+        
+        if (posToMid < stopLine - 10) this.passedStopLine = true;
+        
+        if (this.lc_cooldown > 0) this.lc_cooldown--;
+        if (this.threatCounter > 0) this.threatCounter--;
+        
+        const threatInFront = this.checkFrontForPerpendicularVehicle();
+        
+        if (threatInFront) {
+            this.threatCounter = 120;
+        }
+        
+        this.evasionMode = false;
+        
+        if (this.threatCounter > 0 && !this.isChangingLane && this.lc_cooldown === 0) {
+            const otherLane = this.lane === 0 ? 1 : 0;
+            
+            if (this.canChangeLaneToEvade(otherLane)) {
+                this.isChangingLane = true;
+                this.evasionMode = true;
+                this.lc_sourceLane = this.lane;
+                this.lane = otherLane;
+                this.lc_progress = 0;
+                this.lc_cooldown = CONFIG.car.lc_cooldown * 1.5;
+                this.threatCounter = 0;
+            }
+        }
+        
+        if (this.isChangingLane) {
+            this.lc_progress += 1 / CONFIG.car.lc_duration;
+            this.currentLane = this.lc_sourceLane + (this.lane - this.lc_sourceLane) * this.lc_progress;
+            this.steeringAngle = Math.sin(this.lc_progress * Math.PI) * 0.15 * 
+                                (this.lane > this.lc_sourceLane ? 1 : -1);
+            
+            if (this.lc_progress >= 1) {
+                this.isChangingLane = false;
+                this.currentLane = this.lane;
+                this.steeringAngle = 0;
+                this.evasionMode = false;
+            }
+        } else {
+            this.currentLane = this.lane;
+            this.steeringAngle = 0;
+        }
+        
+        if (!this.isChangingLane && !this.evasionMode && this.lc_cooldown === 0 && Math.random() < 0.015) {
+            const targetLane = this.lane === 0 ? 1 : 0;
+            const curN = this.getNeighbors(this.lane);
+            const tarN = this.getNeighbors(targetLane);
+            
+            const curA = this.calculateAccel(this.v, curN.front.dist, curN.front.v);
+            const tarA = this.calculateAccel(this.v, tarN.front.dist, tarN.front.v);
+            
+            if (tarN.back.dist > 45 && tarA > curA + CONFIG.car.lc_threshold) {
+                this.isChangingLane = true;
+                this.lc_sourceLane = this.lane;
+                this.lane = targetLane;
+                this.lc_progress = 0;
+                this.lc_cooldown = CONFIG.car.lc_cooldown;
+            }
+        }
+        
+        let neighbors = this.getNeighbors(this.lane);
+        let sFront = neighbors.front.dist;
+        let vFront = neighbors.front.v;
+        
+        if (!this.passedStopLine) {
+            const isBlocked = isH ? (app.lightPhase !== 0) : (app.lightPhase !== 2);
+            if (isBlocked) {
+                const dStop = posToMid - stopLine;
+                if (dStop > 0 && dStop < sFront) {
+                    sFront = dStop;
+                    vFront = 0;
+                }
+            }
+        }
+        
+        if (this.isIncident) {
+            this.v = 0;
+        } else if (this.evasionMode) {
+            this.a = this.calculateAccel(this.v, sFront, vFront);
+            this.v = Math.max(0.5, Math.min(this.v + this.a * 0.5, CONFIG.car.targetV));
+        } else if (this.threatCounter > 0 && !this.isChangingLane) {
+            this.v = Math.max(0.5, this.v - 0.10);
+        } else {
+            this.a = this.calculateAccel(this.v, sFront, vFront);
+            
+            if (this.isThrottled) {
+                this.v = Math.max(0.3, this.v - this.throttleDecel);
+            } else {
+                this.v = Math.max(0, Math.min(this.v + this.a, CONFIG.car.targetV * 1.5));
+            }
+        }
+        
+        // === 应用碰撞反弹速度（衰减） ===
+        this.vx *= CONFIG.physics.dampingFactor;
+        this.vy *= CONFIG.physics.dampingFactor;
+        
+        const move = this.v;
+        const off = (this.currentLane + 0.5) * CONFIG.lane;
+        
+        if (this.dir === 'E') {
+            this.x += move + this.vx;
+            this.y = my + off + this.vy;
+        } else if (this.dir === 'W') {
+            this.x -= move - this.vx;
+            this.y = my - off + this.vy;
+        } else if (this.dir === 'S') {
+            this.y += move + this.vy;
+            this.x = mx + off + this.vx;
+        } else if (this.dir === 'N') {
+            this.y -= move - this.vy;
+            this.x = mx - off + this.vx;
+        }
+    }
+    
+    updateOverpass(app) {
+        const my = app.canvas.height / 2;
+        const laneW = CONFIG.lane;
+        const roadHeight = laneW * 6;
+        const roadTop = my - roadHeight / 2;
+        
+        if (this.lc_cooldown > 0) this.lc_cooldown--;
+        
+        if (!this.isChangingLane && this.lc_cooldown === 0 && Math.random() < 0.08) {
+            let possibleLanes = [];
+            if (this.lane > 0) possibleLanes.push(this.lane - 1);
+            if (this.lane < 5) possibleLanes.push(this.lane + 1);
+            
+            if (this.lane < 3) {
+                possibleLanes = possibleLanes.filter(l => l < 3);
+            } else {
+                possibleLanes = possibleLanes.filter(l => l >= 3);
+            }
+            
+            if (possibleLanes.length > 0) {
+                const targetLane = possibleLanes[Math.floor(Math.random() * possibleLanes.length)];
+                const curN = this.getNeighbors(this.lane);
+                const tarN = this.getNeighbors(targetLane);
+                
+                const curA = this.calculateAccel(this.v, curN.front.dist, curN.front.v);
+                const tarA = this.calculateAccel(this.v, tarN.front.dist, tarN.front.v);
+                
+                if (tarN.back.dist > 40 && tarN.front.dist > 30 && 
+                    tarA > curA + CONFIG.car.lc_threshold) {
+                    this.isChangingLane = true;
+                    this.lc_sourceLane = this.lane;
+                    this.lane = targetLane;
+                    this.lc_progress = 0;
+                    this.lc_cooldown = CONFIG.car.lc_cooldown;
+                }
+            }
+        }
+        
+        if (this.isChangingLane) {
+            this.lc_progress += 1 / CONFIG.car.lc_duration;
+            this.currentLane = this.lc_sourceLane + (this.lane - this.lc_sourceLane) * this.lc_progress;
+            this.steeringAngle = Math.sin(this.lc_progress * Math.PI) * 0.15 * 
+                                (this.lane > this.lc_sourceLane ? 1 : -1);
+            
+            if (this.lc_progress >= 1) {
+                this.isChangingLane = false;
+                this.currentLane = this.lane;
+                this.steeringAngle = 0;
+            }
+        } else {
+            this.currentLane = this.lane;
+            this.steeringAngle = 0;
+        }
+        
+        let neighbors = this.getNeighbors(this.lane);
+        let sFront = neighbors.front.dist;
+        let vFront = neighbors.front.v;
+        
+        if (this.isIncident) {
+            this.v = 0;
+        } else {
+            this.a = this.calculateAccel(this.v, sFront, vFront);
+            
+            if (this.isThrottled) {
+                this.v = Math.max(0.3, this.v - this.throttleDecel);
+            } else {
+                this.v = Math.max(0, Math.min(this.v + this.a, CONFIG.car.targetV * 1.5));
+            }
+        }
+        
+        this.vx *= CONFIG.physics.dampingFactor;
+        
+        const move = this.v;
+        const off = (this.currentLane + 0.5) * laneW;
+        
+        if (this.direction === 1) {
+            this.x += move + this.vx;
+        } else {
+            this.x -= move - this.vx;
+        }
+        
+        this.y = roadTop + off;
+    }
+    
+    draw(ctx) {
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        
+        let baseAngle = 0;
+        if (this.mapType === 'intersection') {
+            baseAngle = { 'E': 0, 'W': Math.PI, 'S': Math.PI / 2, 'N': -Math.PI / 2 }[this.dir];
+        } else if (this.mapType === 'overpass') {
+            baseAngle = this.direction === 1 ? 0 : Math.PI;
+        }
+        
+        ctx.rotate(baseAngle + this.steeringAngle);
+        
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.15)';
+        ctx.shadowBlur = 5;
+        ctx.shadowOffsetY = 3;
+        
+        if (this.isIncident) {
+            ctx.fillStyle = '#ff4757';
+        } else if (this.isColliding) {
+            ctx.fillStyle = '#ff4757';
+        } else if (this.isThrottled) {
+            ctx.fillStyle = '#ff9800';
+        } else {
+            ctx.fillStyle = this.color;
+        }
+        
+        ctx.beginPath();
+        ctx.roundRect(-CONFIG.car.l / 2, -CONFIG.car.w / 2, CONFIG.car.l, CONFIG.car.w, 4);
+        ctx.fill();
+        
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
+        ctx.fillRect(CONFIG.car.l / 8, -CONFIG.car.w / 2 + 4, CONFIG.car.l / 4, CONFIG.car.w - 8);
+        
+        if (this.a < -0.08) {
+            ctx.fillStyle = '#ff4757';
+            ctx.fillRect(-CONFIG.car.l / 2, -CONFIG.car.w / 2 + 2, 4, 6);
+            ctx.fillRect(-CONFIG.car.l / 2, CONFIG.car.w / 2 - 8, 4, 6);
+        }
+        
+        if (this.isChangingLane) {
+            ctx.fillStyle = (Math.floor(Date.now() / 300) % 2) ? '#ffa502' : 'transparent';
+            const lampY = (this.lane > this.lc_sourceLane) ? CONFIG.car.w / 2 - 4 : -CONFIG.car.w / 2;
+            ctx.fillRect(CONFIG.car.l / 2 - 6, lampY, 5, 4);
+        }
+        
+        ctx.restore();
+    }
+}
+
+app.init();
+</script>
+
+</body>
+</html>
