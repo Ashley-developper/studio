@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>全屏文字显示器 + Gemini AI (Fixed)</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      background: #000;
+      overflow: hidden;
+      cursor: none; /* 默认隐藏鼠标 */
+    }
+    canvas {
+      display: block;
+      width: 100vw;
+      height: 100vh;
+    }
+    /* 通用对话框样式 */
+    .dialog-box {
+      position: fixed;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(0,0,0,0.95);
+      padding: 24px 28px;
+      border-radius: 12px;
+      box-shadow: 0 0 30px rgba(0,0,0,0.6), 0 0 0 1px #333;
+      display: none;
+      z-index: 100;
+      transition: all 0.2s ease;
+    }
+    .dialog-box label {
+      display: block;
+      margin-bottom: 12px;
+      color: #fff;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 15px;
+      font-weight: 500;
+    }
+    .dialog-input {
+      width: 400px;
+      padding: 12px 14px;
+      border-radius: 6px;
+      border: 1px solid #444;
+      outline: none;
+      background: #1a1a1a;
+      color: #fff;
+      font-size: 16px;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .dialog-input:focus {
+      border-color: #0af;
+      box-shadow: 0 0 0 2px rgba(0, 170, 255, 0.3);
+    }
+    
+    /* AI 对话框特定样式 */
+    #aiDialog {
+      border-top: 4px solid #a855f7; /* 紫色代表 AI */
+    }
+    #aiDialog .dialog-input:focus {
+      border-color: #a855f7;
+      box-shadow: 0 0 0 2px rgba(168, 85, 247, 0.3);
+    }
+    #aiLoading {
+      margin-top: 15px;
+      color: #a855f7;
+      font-size: 14px;
+      font-family: monospace;
+      display: none;
+      text-align: center;
+    }
+    
+    #hint {
+      position: fixed;
+      left: 50%;
+      bottom: 32px;
+      transform: translateX(-50%);
+      color: #444;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 12px;
+      user-select: none;
+      pointer-events: none;
+      text-align: center;
+      line-height: 1.6;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="screen"></canvas>
+
+  <!-- 普通文字输入框 -->
+  <div id="inputDialog" class="dialog-box">
+    <label for="displayText">Display text:</label>
+    <input id="displayText" class="dialog-input" type="text" autocomplete="off" />
+  </div>
+
+  <!-- AI 输入框 -->
+  <div id="aiDialog" class="dialog-box">
+    <label for="aiInput">Ask AI (ChatGPT)</label>
+    <input id="aiInput" class="dialog-input" type="text" autocomplete="off" placeholder="Who is Zhanyi Zhou" />
+    <div id="aiLoading">AI thinking...</div>
+  </div>
+
+  <div id="hint">
+    MADE BY ZHANYI ZHOU
+  </div>
+  <script src="https://js.puter.com/v2/"></script>
+  <script>
+    (function() {
+      const canvas = document.getElementById('screen');
+      const ctx = canvas.getContext('2d');
+      
+      const inputDialog = document.getElementById('inputDialog');
+      const inputNormal = document.getElementById('displayText');
+      const aiDialog = document.getElementById('aiDialog');
+      const inputAI = document.getElementById('aiInput');
+      const aiLoading = document.getElementById('aiLoading');
+      
+      let W, H;
+      let currentText = '';
+      let fireworks = [];
+      let mouseVisible = false;
+      let animating = false;
+      let isComposing = false;
+      let autoFirework = false;
+      let autoFireIntervalId = null;
+
+      // API Key
+      const apiKeyFromEnv = ""; 
+
+      function resize() {
+        W = canvas.width = window.innerWidth * window.devicePixelRatio;
+        H = canvas.height = window.innerHeight * window.devicePixelRatio;
+        canvas.style.width = '100vw';
+        canvas.style.height = '100vh';
+        draw();
+      }
+     
+      window.addEventListener('resize', resize);
+      resize();
+     
+      let mouseTimer = null;
+      window.addEventListener('mousemove', () => {
+        if (!mouseVisible) {
+          document.body.style.cursor = 'default';
+          mouseVisible = true;
+        }
+        clearTimeout(mouseTimer);
+        mouseTimer = setTimeout(() => {
+          document.body.style.cursor = 'none';
+          mouseVisible = false;
+        }, 1000);
+      });
+
+      function isAnyDialogOpen() {
+        return inputDialog.style.display === 'block' || aiDialog.style.display === 'block';
+      }
+
+      function openNormalDialog() {
+        if (isAnyDialogOpen()) return;
+        inputDialog.style.display = 'block';
+        inputNormal.value = currentText; 
+        setTimeout(() => inputNormal.focus(), 0);
+      }
+
+      function openAIDialog() {
+        if (isAnyDialogOpen()) return;
+        aiDialog.style.display = 'block';
+        inputAI.value = ''; 
+        inputAI.disabled = false;
+        aiLoading.style.display = 'none';
+        setTimeout(() => inputAI.focus(), 0);
+      }
+     
+      function closeDialogs() {
+        inputDialog.style.display = 'none';
+        aiDialog.style.display = 'none';
+        window.focus();
+      }
+
+      async function askGemini(question) {
+  if (!question.trim()) return;
+
+  aiLoading.style.display = 'block';
+  aiLoading.innerText = "✨ AI Thinking...";
+  inputAI.disabled = true;
+
+  try {
+    const response = await puter.ai.chat([
+  {
+    role: 'system',
+    content: '你的名字叫Zhanyi Zhou，你扮演我网站的开发者。回答短暂。用户说什么语言，你说什么语言。网站控制：A：AI模式 H：烟花 G：自动烟花 空格：text dislay'
+  },
+  {
+    role: 'user',
+    content: question
+  }
+], { model: 'gpt-5-nano' });
+
+    // **关键：打印完整响应结构（F12 Console 查看）**
+    console.log('=== Puter AI 完整响应 ===');
+    console.log('类型:', typeof response);
+    console.log('响应:', response);
+    console.log('JSON 化:', JSON.stringify(response, null, 2));
+
+    // **标准 ChatResponse 解析** [web:57]
+    let aiText = '';
+    if (typeof response === 'string') {
+      aiText = response;
+    } else if (response?.message?.content) {
+      aiText = response.message.content;  // ChatResponse.message.content
+    } else if (response?.content) {
+      aiText = response.content;
+    } else if (response?.text) {
+      aiText = response.text;
+    } else {
+      aiText = String(response || '空响应');  // 强制转字符串
+    }
+
+    if (!aiText.trim()) throw new Error(`无效内容。完整响应: ${JSON.stringify(response)}`);
+
+    currentText = aiText.trim();
+    closeDialogs();
+    draw();
+    triggerFireworks();
+
+  } catch (error) {
+    console.error('完整错误:', error);
+    alert("❌ 错误详情见 F12 Console\n" + error.message);
+    aiLoading.style.display = 'none';
+    inputAI.disabled = false;
+    inputAI.focus();
+  }
+}
+
+
+     
+      function splitIntoTokens(text) {
+        const tokens = [];
+        let i = 0;
+        const len = text.length;
+        const isAsciiWordChar = (ch) => /[A-Za-z0-9_\-']/u.test(ch);
+     
+        while (i < len) {
+          const ch = text[i];
+          if (/\s/u.test(ch)) {
+            while (i < len && /\s/u.test(text[i])) i++;
+            tokens.push({ type: 'space', value: ' ' });
+            continue;
+          }
+          if (isAsciiWordChar(ch)) {
+            let start = i;
+            i++;
+            while (i < len && isAsciiWordChar(text[i])) i++;
+            tokens.push({ type: 'word', value: text.slice(start, i) });
+            continue;
+          }
+          tokens.push({ type: 'char', value: ch });
+          i++;
+        }
+        return tokens;
+      }
+     
+      function wrapTextAdvanced(text, maxWidth, fontSize, fontFamily) {
+        const paragraphs = text.split(/\r?\n/);
+        const lines = [];
+        ctx.font = fontSize + 'px ' + fontFamily;
+        const measure = (s) => ctx.measureText(s).width;
+     
+        for (let pIndex = 0; pIndex < paragraphs.length; pIndex++) {
+          const para = paragraphs[pIndex];
+          const tokens = splitIntoTokens(para);
+          let line = '';
+          let lastTokenType = null;
+     
+          for (let i = 0; i < tokens.length; i++) {
+            const token = tokens[i];
+            if (token.type === 'space') { lastTokenType = 'space'; continue; }
+     
+            if (token.type === 'word') {
+              let prefix = (lastTokenType === 'word' || lastTokenType === 'space') ? ' ' : '';
+              const testLine = line + prefix + token.value;
+              if (measure(testLine) <= maxWidth || line === '') {
+                line = testLine;
+              } else {
+                if (line) lines.push(line);
+                line = token.value;
+              }
+              lastTokenType = 'word';
+              continue;
+            }
+     
+            if (token.type === 'char') {
+              const testLine = line + token.value;
+              if (measure(testLine) <= maxWidth || line === '') {
+                line = testLine;
+              } else {
+                if (line) lines.push(line);
+                line = token.value;
+              }
+              lastTokenType = 'char';
+              continue;
+            }
+          }
+          if (line) lines.push(line);
+          if (pIndex < paragraphs.length - 1) lines.push('');
+        }
+     
+        const lineHeight = fontSize * 1.2;
+        const totalHeight = lines.length * lineHeight;
+        let maxLineWidth = 0;
+        for (const l of lines) {
+          const w = measure(l);
+          if (w > maxLineWidth) maxLineWidth = w;
+        }
+        return { lines, lineHeight, totalHeight, maxLineWidth };
+      }
+     
+      function drawText() {
+        ctx.clearRect(0, 0, W, H);
+        if (!currentText) return;
+     
+        const padding = 80 * window.devicePixelRatio;
+        const maxWidth = W - padding * 2;
+        const maxHeight = H - padding * 2;
+        const fontFamily = "'Microsoft YaHei', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+     
+        let low = 10 * window.devicePixelRatio;
+        let high = Math.min(W, H);
+        let best = { fontSize: low, lines: [], lineHeight: 0, totalHeight: 0, maxLineWidth: 0 };
+     
+        while (low <= high) {
+          const mid = Math.floor((low + high) / 2);
+          const result = wrapTextAdvanced(currentText, maxWidth, mid, fontFamily);
+          if (result.totalHeight <= maxHeight && result.maxLineWidth <= maxWidth) {
+            best = { fontSize: mid, ...result };
+            low = mid + 1;
+          } else {
+            high = mid - 1;
+          }
+        }
+     
+        ctx.fillStyle = '#000';
+        ctx.fillRect(0, 0, W, H);
+        ctx.fillStyle = '#fff';
+        ctx.textBaseline = 'middle';
+        ctx.textAlign = 'center';
+        ctx.font = best.fontSize + 'px ' + fontFamily;
+     
+        const startY = (H - best.totalHeight) / 2 + best.lineHeight / 2;
+        best.lines.forEach((line, i) => {
+          const y = startY + i * best.lineHeight;
+          ctx.fillText(line, W / 2, y);
+        });
+      }
+     
+      function draw() {
+        ctx.fillStyle = '#000';
+        ctx.fillRect(0, 0, W, H);
+        drawText();
+      }
+     
+      function startAutoFireworks() {
+        if (autoFireIntervalId) return;
+        autoFirework = true;
+        autoFireIntervalId = setInterval(triggerFireworks, 800);
+      }
+     
+      function stopAutoFireworks() {
+        autoFirework = false;
+        if (autoFireIntervalId) {
+          clearInterval(autoFireIntervalId);
+          autoFireIntervalId = null;
+        }
+      }
+     
+      class Particle {
+        constructor(x, y, color) {
+          this.x = x; this.y = y;
+          const angle = Math.random() * Math.PI * 2;
+          const speed = Math.random() * 4 + 1;
+          this.vx = Math.cos(angle) * speed;
+          this.vy = Math.sin(angle) * speed;
+          this.alpha = 1;
+          this.decay = Math.random() * 0.01 + 0.005;
+          this.color = color;
+          this.size = Math.random() * 2 + 1;
+          this.trail = [];
+          this.trailLength = 8;
+          while (this.trail.length < this.trailLength) this.trail.push([this.x, this.y]);
+        }
+        update() {
+          this.trail.pop();
+          this.trail.unshift([this.x, this.y]);
+          this.x += this.vx; this.y += this.vy;
+          this.vy += 0.02; this.alpha -= this.decay;
+        }
+        draw(ctx) {
+          ctx.save();
+          ctx.globalAlpha = this.alpha;
+          ctx.strokeStyle = this.color;
+          ctx.lineWidth = this.size;
+          ctx.beginPath();
+          const last = this.trail[this.trail.length - 1];
+          ctx.moveTo(last[0], last[1]);
+          ctx.lineTo(this.x, this.y);
+          ctx.stroke();
+          ctx.fillStyle = this.color;
+          ctx.beginPath();
+          ctx.arc(this.x, this.y, this.size * 1.1, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        }
+      }
+     
+      function createFireworkBurst(x, y) {
+        const colors = ['#ff4b4b', '#ffd93b', '#4bffb5', '#4bb8ff', '#ff4bda'];
+        const color = colors[Math.floor(Math.random() * colors.length)];
+        for (let i = 0; i < 120; i++) fireworks.push(new Particle(x, y, color));
+      }
+     
+      function triggerFireworks() {
+        for (let i = 0; i < 6; i++) {
+          createFireworkBurst(Math.random() * W, Math.random() * H * 0.8);
+        }
+        if (!animating) animate();
+      }
+     
+      function animate() {
+        animating = true;
+        ctx.save();
+        ctx.globalCompositeOperation = 'destination-out';
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.25)';
+        ctx.fillRect(0, 0, W, H);
+        ctx.restore();
+        ctx.globalCompositeOperation = 'lighter';
+        drawText();
+        fireworks = fireworks.filter(p => p.alpha > 0);
+        for (const p of fireworks) { p.update(); p.draw(ctx); }
+        if (fireworks.length > 0) requestAnimationFrame(animate);
+        else { animating = false; ctx.globalCompositeOperation = 'source-over'; draw(); }
+      }
+
+      window.addEventListener('keydown', (e) => {
+        if (isAnyDialogOpen()) return;
+        if (e.code === 'Space') { e.preventDefault(); openNormalDialog(); }
+        if (e.key === 'a' || e.key === 'A') { e.preventDefault(); openAIDialog(); }
+        if (e.key === 'h' || e.key === 'H') triggerFireworks();
+        if (e.key === 'g' || e.key === 'G') {
+          if (autoFirework) stopAutoFireworks(); else startAutoFireworks();
+        }
+      });
+
+      function setupInputEvents(inputElement, submitCallback) {
+        inputElement.addEventListener('compositionstart', () => { isComposing = true; });
+        inputElement.addEventListener('compositionend', () => { isComposing = false; });
+        inputElement.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') {
+            if (e.isComposing || isComposing) return;
+            e.preventDefault();
+            submitCallback(inputElement.value);
+          } else if (e.key === 'Escape') {
+            e.preventDefault();
+            closeDialogs();
+          }
+        });
+      }
+
+      setupInputEvents(inputNormal, (val) => {
+        currentText = val;
+        closeDialogs();
+        draw();
+      });
+
+      setupInputEvents(inputAI, (val) => {
+        askGemini(val);
+      });
+    })();
+  </script>
+</body>
+</html>
