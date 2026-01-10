@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Puter Voice Calc</title>
+    <style>
+        body {
+            margin: 0; background: #000; color: #fff;
+            font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+            display: flex; align-items: center; justify-content: center;
+            height: 100vh; overflow: hidden;
+        }
+        #result-box {
+            width: 90%; text-align: center;
+        }
+        #status {
+            position: fixed; top: 30px; font-size: 13px;
+            letter-spacing: 2px; border: 1px solid #444;
+            padding: 8px 20px; border-radius: 50px;
+            transition: all 0.3s;
+        }
+        .active { border-color: #ff3b30; color: #ff3b30; box-shadow: 0 0 15px rgba(255,59,48,0.3); }
+        .thinking { border-color: #007aff; color: #007aff; }
+        
+        #transcript { font-size: 1.5rem; color: #666; margin-bottom: 20px; height: 1.8rem; }
+        #answer { font-size: clamp(3rem, 12vw, 8rem); font-weight: 800; }
+        #instructions { position: fixed; bottom: 30px; color: #333; font-size: 11px; }
+    </style>
+</head>
+<body>
+
+    <div id="status">HOLD [SPACE] TO SPEAK</div>
+
+    <div id="result-box">
+        <div id="transcript">...</div>
+        <div id="answer">0</div>
+    </div>
+
+    <div id="instructions">POWERED BY PUTER AI + GPT-4O-MINI</div>
+
+    <script src="https://js.puter.com/v2/"></script>
+    <script>
+        const statusEl = document.getElementById('status');
+        const transcriptEl = document.getElementById('transcript');
+        const answerEl = document.getElementById('answer');
+
+        const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+        recognition.interimResults = false;
+        
+        let isHolding = false;
+
+        async function calculate(text) {
+            statusEl.innerText = "THINKING...";
+            statusEl.className = "thinking";
+
+            try {
+                // Use Puter AI to solve the math query
+                const response = await puter.ai.chat([
+                    { 
+                        role: 'system', 
+                        content: 'You are a high-speed math engine. Solve the expression. Output ONLY the numerical result. No words.' 
+                    },
+                    { role: 'user', content: text }
+                ], { model: 'gpt-4o-mini' });
+
+                const result = typeof response === 'string' ? response : response.message.content;
+                
+                answerEl.innerText = result;
+                speak(result);
+                statusEl.innerText = "READY";
+                statusEl.className = "";
+            } catch (err) {
+                answerEl.innerText = "Error";
+                statusEl.innerText = "READY";
+                statusEl.className = "";
+            }
+        }
+
+        function speak(text) {
+            window.speechSynthesis.cancel();
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.rate = 1.3; // Fast, efficient speech
+            window.speechSynthesis.speak(utterance);
+        }
+
+        recognition.onresult = (e) => {
+            const text = e.results[0][0].transcript;
+            transcriptEl.innerText = text;
+            calculate(text);
+        };
+
+        // --- KEY CONTROLS ---
+        window.addEventListener('keydown', (e) => {
+            if (e.code === 'Space' && !isHolding) {
+                e.preventDefault();
+                isHolding = true;
+                statusEl.innerText = "LISTENING...";
+                statusEl.className = "active";
+                answerEl.style.opacity = "0.3";
+                recognition.start();
+            }
+        });
+
+        window.addEventListener('keyup', (e) => {
+            if (e.code === 'Space') {
+                isHolding = false;
+                answerEl.style.opacity = "1";
+                recognition.stop();
+            }
+        });
+
+        // Error handling for speech
+        recognition.onerror = () => {
+            statusEl.innerText = "HOLD [SPACE] TO SPEAK";
+            statusEl.className = "";
+        };
+    </script>
+</body>
+</html>
