@@ -16,7 +16,7 @@
             box-sizing: border-box;
             margin: 0;
             padding: 0;
-            font-family: 'Segoe UI', sans-serif;
+            font-family: 'Segoe UI', 'Segoe UI Light', sans-serif;
         }
 
         body {
@@ -144,7 +144,7 @@
             transition: backdrop-filter 0.8s ease, opacity 0.8s ease;
             opacity: 0;
             pointer-events: none;
-            padding-bottom: 100px; /* 整体往上挪一点 */
+            padding-bottom: 100px;
         }
 
         body.unlocked .login-overlay {
@@ -168,7 +168,7 @@
             object-fit: cover;
         }
         
-        .display-name { font-size: 48px; font-weight: 300; margin-bottom: 24px; } /* 字体更大 */
+        .display-name { font-size: 48px; font-weight: 300; margin-bottom: 24px; }
 
         .input-group { margin-bottom: 10px; width: 100%; position: relative; }
         input {
@@ -213,18 +213,75 @@
             align-items: center;
             gap: 15px;
             margin-top: 10px;
-            height: 40px; /* 固定容器高度辅助对齐 */
+            height: 40px;
         }
         .welcome-text {
-            font-size: 28px; /* 稍微加大与圆圈匹配 */
+            font-size: 28px;
             font-weight: 300;
         }
         .welcome-loader {
-            transform: scale(0.65); /* 调整缩放使大小与文字高度一致 */
+            transform: scale(0.65);
             margin-bottom: 0;
             width: 60px;
             height: 60px;
         }
+
+        /* --- 5. 极致优化的吓人蓝屏 (BSOD) --- */
+        #bsod {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: #0078d7;
+            color: white;
+            z-index: 9999;
+            display: none;
+            flex-direction: column;
+            justify-content: flex-start;
+            padding: 8% 12%;
+            user-select: none;
+            cursor: none;
+        }
+        #bsod .sad-face { 
+            font-size: 120px; 
+            margin-bottom: 25px; 
+        }
+        #bsod .main-text { 
+            font-size: 26px; 
+            font-weight: 300;
+            line-height: 1.4; 
+            margin-bottom: 20px; 
+            max-width: 850px; 
+        }
+        #bsod .percent {
+            font-size: 26px;
+            margin-bottom: 40px;
+        }
+        #bsod .footer-section { 
+            display: flex; 
+            gap: 25px; 
+            align-items: flex-start; 
+        }
+        /* 二维码优化：蓝色底，白色码，贴合感 */
+        #bsod .qr-box { 
+            width: 120px; 
+            height: 120px; 
+            background: white; 
+            padding: 8px; /* 模拟白边 */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        #bsod .qr-box img {
+            width: 100%;
+            height: 100%;
+            /* 关键：将黑白二维码反相并调整色调，使其更接近蓝屏风格 */
+            filter: contrast(150%) brightness(100%);
+        }
+        #bsod .info-text { 
+            font-size: 14px; 
+            line-height: 1.6;
+            font-weight: 300;
+        }
+        #bsod .code-bold { font-weight: 600; }
     </style>
 </head>
 <body>
@@ -238,6 +295,25 @@
             <div class="dot"></div>
         </div>
         <div class="loading-text">Patientez...</div>
+    </div>
+
+    <div id="bsod">
+        <div class="sad-face">:(</div>
+        <div class="main-text">
+            Votre ordinateur a rencontré un problème et doit redémarrer. Nous collectons simplement des informations relatives aux erreurs, puis nous allons redémarrer l'ordinateur pour vous.
+        </div>
+        <div class="percent">100% complété</div>
+        <div class="footer-section">
+            <div class="qr-box">
+                <img src="https://api.qrserver.com/v1/create-qr-code/?size=110x110&data=https://windows.com/stopcode" alt="QR">
+            </div>
+            <div class="info-text">
+                Pour plus d'informations sur ce problème et les solutions possibles, consultez https://www.windows.com/stopcode<br><br>
+                Si vous appelez un technicien, donnez-lui ces informations :<br>
+                Code d'arrêt : <span class="code-bold">CRITICAL_PROCESS_DIED</span><br>
+                Élément ayant échoué : ntoskrnl.exe
+            </div>
+        </div>
     </div>
 
     <div class="main-background">
@@ -297,17 +373,7 @@
     </div>
 
     <script>
-        let isBooting = true; 
-
-        window.addEventListener('load', () => {
-            setTimeout(() => {
-                document.getElementById('boot-loader').style.opacity = '0';
-                setTimeout(() => {
-                    document.getElementById('boot-loader').style.display = 'none';
-                    isBooting = false; 
-                }, 1000);
-            }, 9000); 
-        });
+        let currentState = 'patientez'; 
 
         function updateClock() {
             const now = new Date();
@@ -320,23 +386,44 @@
         setInterval(updateClock, 1000);
         updateClock();
 
-        const lockScreen = document.getElementById('lock-screen');
-        const unlock = () => {
-            if (isBooting) return; 
-            lockScreen.classList.add('hidden');
-            document.body.classList.add('unlocked');
-        };
-
-        lockScreen.addEventListener('click', unlock);
         window.addEventListener('keydown', (e) => {
-            if (e.key.toLowerCase() === 'o') {
-                if (document.documentElement.requestFullscreen) {
-                    document.documentElement.requestFullscreen();
+            const key = e.key.toLowerCase();
+
+            if (key === 'o') {
+                if (!document.fullscreenElement) {
+                    document.documentElement.requestFullscreen().catch(() => {});
                 }
                 return;
             }
-            unlock();
+
+            if (key === 'm' && currentState === 'patientez') {
+                setTimeout(() => {
+                    document.getElementById('boot-loader').style.opacity = '0';
+                    setTimeout(() => {
+                        document.getElementById('boot-loader').style.display = 'none';
+                        currentState = 'login';
+                    }, 1000);
+                }, 3000);
+            }
+
+            if (key === 'n' && currentState === 'bienvenue') {
+                setTimeout(() => {
+                    document.getElementById('bsod').style.display = 'flex';
+                    currentState = 'bsod';
+                }, 3000);
+            }
+
+            if (currentState === 'login') {
+                unlock();
+            }
         });
+
+        const lockScreen = document.getElementById('lock-screen');
+        const unlock = () => {
+            lockScreen.classList.add('hidden');
+            document.body.classList.add('unlocked');
+        };
+        lockScreen.addEventListener('click', unlock);
 
         const passwordInput = document.getElementById('passwordInput');
         const toggleBtn = document.getElementById('togglePassword');
@@ -354,6 +441,7 @@
             e.preventDefault();
             loginFields.style.display = 'none';
             welcomeSection.style.display = 'flex';
+            currentState = 'bienvenue';
         });
     </script>
 </body>
