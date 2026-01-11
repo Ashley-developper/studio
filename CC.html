@@ -1,120 +1,360 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Puter Voice Calc</title>
+    <title>Windows 10 Experience</title>
     <style>
+        :root {
+            --win-blue: #0078d7;
+            --win-border: rgba(255, 255, 255, 0.4);
+            --win-bg-input: rgba(0, 0, 0, 0.45);
+            --win-grey-trans: rgba(128, 128, 128, 0.3);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', sans-serif;
+        }
+
         body {
-            margin: 0; background: #000; color: #fff;
-            font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-            display: flex; align-items: center; justify-content: center;
-            height: 100vh; overflow: hidden;
+            height: 100vh;
+            width: 100vw;
+            background: #000;
+            overflow: hidden;
+            color: white;
         }
-        #result-box {
-            width: 90%; text-align: center;
+
+        /* --- 1. 启动加载屏幕 (Loading Screen) --- */
+        #boot-loader {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #0078d7;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            transition: opacity 1s ease;
         }
-        #status {
-            position: fixed; top: 30px; font-size: 13px;
-            letter-spacing: 2px; border: 1px solid #444;
-            padding: 8px 20px; border-radius: 50px;
-            transition: all 0.3s;
+
+        .win-loader {
+            position: relative;
+            width: 60px;
+            height: 60px;
+            margin-bottom: 30px;
         }
-        .active { border-color: #ff3b30; color: #ff3b30; box-shadow: 0 0 15px rgba(255,59,48,0.3); }
-        .thinking { border-color: #007aff; color: #007aff; }
+
+        .dot {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            animation: orbit 5.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+        }
+
+        .dot::after {
+            content: '';
+            position: absolute;
+            left: 50%;
+            top: 0;
+            transform: translateX(-50%);
+            width: 7px;
+            height: 7px;
+            background: #fff;
+            border-radius: 50%;
+        }
+
+        .dot:nth-child(1) { animation-delay: 0.2s; }
+        .dot:nth-child(2) { animation-delay: 0.4s; }
+        .dot:nth-child(3) { animation-delay: 0.6s; }
+        .dot:nth-child(4) { animation-delay: 0.8s; }
+        .dot:nth-child(5) { animation-delay: 1.0s; }
+
+        .loading-text {
+            font-size: 24px;
+            font-weight: 350;
+            letter-spacing: 0.5px;
+        }
+
+        @keyframes orbit {
+            0% { transform: rotate(225deg); opacity: 1; animation-timing-function: ease-out; }
+            7% { transform: rotate(345deg); animation-timing-function: linear; }
+            30% { transform: rotate(455deg); animation-timing-function: ease-in-out; }
+            39% { transform: rotate(690deg); animation-timing-function: linear; }
+            70% { transform: rotate(815deg); opacity: 1; animation-timing-function: ease-out; }
+            75% { transform: rotate(945deg); opacity: 0; }
+            100% { transform: rotate(945deg); opacity: 0; }
+        }
+
+        /* --- 背景容器 --- */
+        .main-background {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: url('win10.jpg') no-repeat center center fixed;
+            background-size: cover;
+        }
+
+        /* --- 2. 锁屏 (Lock Screen) --- */
+        #lock-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            padding: 0 0 50px 50px;
+            background: rgba(0,0,0,0.1);
+            transition: opacity 0.8s ease, visibility 0.8s;
+            cursor: pointer;
+        }
+
+        #lock-screen.hidden {
+            opacity: 0;
+            visibility: hidden;
+        }
+
+        .time-display { font-size: 96px; font-weight: 300; line-height: 1; }
+        .date-display { font-size: 42px; font-weight: 300; margin-top: 10px; }
+
+        /* --- 3. 登录界面 (Login Screen) --- */
+        .login-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(0px);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            transition: backdrop-filter 0.8s ease, opacity 0.8s ease;
+            opacity: 0;
+            pointer-events: none;
+            padding-bottom: 100px; /* 整体往上挪一点 */
+        }
+
+        body.unlocked .login-overlay {
+            backdrop-filter: blur(25px) saturate(125%);
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        .user-section { text-align: center; width: 320px; }
         
-        #transcript { font-size: 1.5rem; color: #666; margin-bottom: 20px; height: 1.8rem; }
-        #answer { font-size: clamp(3rem, 12vw, 8rem); font-weight: 800; }
-        #instructions { position: fixed; bottom: 30px; color: #333; font-size: 11px; }
+        .avatar-container {
+            width: 190px; height: 190px; margin: 0 auto 20px;
+            border-radius: 50%; background: #0078d7;
+            border: 1px solid var(--win-border);
+            display: flex; justify-content: center; align-items: center; 
+            overflow: hidden;
+        }
+        .avatar-container img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        .display-name { font-size: 48px; font-weight: 300; margin-bottom: 24px; } /* 字体更大 */
+
+        .input-group { margin-bottom: 10px; width: 100%; position: relative; }
+        input {
+            width: 100%; padding: 9px 12px; font-size: 15px; outline: none;
+            background: var(--win-bg-input); border: 2px solid var(--win-border); color: white;
+            transition: background 0.2s;
+        }
+        input:focus { background: white !important; color: black !important; border-color: white; }
+
+        .password-controls {
+            position: absolute; right: 0; top: 0; height: 100%;
+            display: flex; align-items: stretch;
+        }
+        .control-btn { background: transparent; border: none; width: 38px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+        
+        .eye-toggle svg { width: 18px; fill: white; opacity: 0.7; }
+        input:focus ~ .password-controls .eye-toggle svg { fill: black; }
+
+        .submit-arrow {
+            background: var(--win-grey-trans); border: 2px solid var(--win-border); border-left: 1px solid var(--win-border);
+            transition: all 0.2s;
+        }
+        .submit-arrow svg { width: 20px; fill: white; }
+        input:focus ~ .password-controls .submit-arrow { border-color: #ccc; }
+        input:focus ~ .password-controls .submit-arrow svg { fill: black; }
+
+        .submit-arrow:hover svg { fill: white !important; }
+
+        .domain-text { margin-top: 24px; font-size: 13px; color: rgba(255, 255, 255, 0.7); }
+
+        .system-tray { position: absolute; bottom: 32px; right: 48px; display: flex; gap: 24px; }
+        .system-tray svg { width: 24px; height: 24px; fill: white; opacity: 0.85; }
+
+        /* --- 4. 登录后状态 --- */
+        #welcome-section {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+        }
+        .welcome-msg-container {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-top: 10px;
+            height: 40px; /* 固定容器高度辅助对齐 */
+        }
+        .welcome-text {
+            font-size: 28px; /* 稍微加大与圆圈匹配 */
+            font-weight: 300;
+        }
+        .welcome-loader {
+            transform: scale(0.65); /* 调整缩放使大小与文字高度一致 */
+            margin-bottom: 0;
+            width: 60px;
+            height: 60px;
+        }
     </style>
 </head>
 <body>
 
-    <div id="status">HOLD [SPACE] TO SPEAK</div>
-
-    <div id="result-box">
-        <div id="transcript">...</div>
-        <div id="answer">0</div>
+    <div id="boot-loader">
+        <div class="win-loader">
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+        </div>
+        <div class="loading-text">Patientez...</div>
     </div>
 
-    <div id="instructions">POWERED BY PUTER AI + GPT-4O-MINI</div>
+    <div class="main-background">
+        <div id="lock-screen">
+            <div class="time-display" id="time">00:00</div>
+            <div class="date-display" id="date">Loading...</div>
+        </div>
 
-    <script src="https://js.puter.com/v2/"></script>
+        <div class="login-overlay">
+            <div class="user-section" id="login-fields">
+                <div class="avatar-container">
+                    <img src="avatar.jpg" alt="Avatar">
+                </div>
+                <div class="display-name">Autre utilisateur</div>
+                <form id="loginForm">
+                    <div class="input-group">
+                        <input type="text" placeholder="Nom d'utilisateur" spellcheck="false">
+                    </div>
+                    <div class="input-group">
+                        <input type="password" id="passwordInput" placeholder="Mot de passe">
+                        <div class="password-controls">
+                            <button type="button" class="control-btn eye-toggle" id="togglePassword">
+                                <svg viewBox="0 0 24 24"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
+                            </button>
+                            <button type="submit" class="control-btn submit-arrow">
+                                <svg viewBox="0 0 24 24"><path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z"/></svg>
+                            </button>
+                        </div>
+                    </div>
+                </form>
+                <div class="domain-text">Se connecter à : ECOLE_DOMAIN</div>
+            </div>
+
+            <div class="user-section" id="welcome-section">
+                <div class="avatar-container">
+                    <img src="avatar.jpg" alt="Avatar">
+                </div>
+                <div class="display-name">Zhou, Z</div>
+                <div class="welcome-msg-container">
+                    <div class="welcome-text">Bienvenue</div>
+                    <div class="win-loader welcome-loader">
+                        <div class="dot"></div>
+                        <div class="dot"></div>
+                        <div class="dot"></div>
+                        <div class="dot"></div>
+                        <div class="dot"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="system-tray">
+                <svg viewBox="0 0 24 24"><path d="M15.91 13.34L12 17.25l-3.91-3.91a5.5 5.5 0 1 1 7.82 0z"/></svg>
+                <svg viewBox="0 0 24 24"><path d="M12 2c1.1 0 2 .9 2 2s-.9 2-2 2-2-.9-2-2 .9-2 2-2zm9 7h-6v13h-2v-6h-2v6H9V9H3V7h18v2z"/></svg>
+                <svg viewBox="0 0 24 24"><path d="M13 3h-2v10h2V3zm4.83 2.17l-1.42 1.42C17.99 7.86 19 9.81 19 12c0 3.87-3.13 7-7 7s-7-3.13-7-7c0-2.19 1.01-4.14 2.58-5.42L6.17 5.17C4.23 6.82 3 9.26 3 12c0 4.97 4.03 9 9 9s9-4.03 9-9c0-2.74-1.23-5.18-3.17-6.83z"/></svg>
+            </div>
+        </div>
+    </div>
+
     <script>
-        const statusEl = document.getElementById('status');
-        const transcriptEl = document.getElementById('transcript');
-        const answerEl = document.getElementById('answer');
+        let isBooting = true; 
 
-        const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
-        recognition.interimResults = false;
-        
-        let isHolding = false;
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                document.getElementById('boot-loader').style.opacity = '0';
+                setTimeout(() => {
+                    document.getElementById('boot-loader').style.display = 'none';
+                    isBooting = false; 
+                }, 1000);
+            }, 9000); 
+        });
 
-        async function calculate(text) {
-            statusEl.innerText = "THINKING...";
-            statusEl.className = "thinking";
-
-            try {
-                // Use Puter AI to solve the math query
-                const response = await puter.ai.chat([
-                    { 
-                        role: 'system', 
-                        content: 'You are a high-speed math engine. Solve the expression. Output ONLY the numerical result. No words.' 
-                    },
-                    { role: 'user', content: text }
-                ], { model: 'gpt-4o-mini' });
-
-                const result = typeof response === 'string' ? response : response.message.content;
-                
-                answerEl.innerText = result;
-                speak(result);
-                statusEl.innerText = "READY";
-                statusEl.className = "";
-            } catch (err) {
-                answerEl.innerText = "Error";
-                statusEl.innerText = "READY";
-                statusEl.className = "";
-            }
+        function updateClock() {
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+            const options = { weekday: 'long', day: 'numeric', month: 'long' };
+            const dateStr = now.toLocaleDateString('fr-FR', options);
+            document.getElementById('time').textContent = timeStr;
+            document.getElementById('date').textContent = dateStr.charAt(0).toUpperCase() + dateStr.slice(1);
         }
+        setInterval(updateClock, 1000);
+        updateClock();
 
-        function speak(text) {
-            window.speechSynthesis.cancel();
-            const utterance = new SpeechSynthesisUtterance(text);
-            utterance.rate = 1.3; // Fast, efficient speech
-            window.speechSynthesis.speak(utterance);
-        }
-
-        recognition.onresult = (e) => {
-            const text = e.results[0][0].transcript;
-            transcriptEl.innerText = text;
-            calculate(text);
+        const lockScreen = document.getElementById('lock-screen');
+        const unlock = () => {
+            if (isBooting) return; 
+            lockScreen.classList.add('hidden');
+            document.body.classList.add('unlocked');
         };
 
-        // --- KEY CONTROLS ---
+        lockScreen.addEventListener('click', unlock);
         window.addEventListener('keydown', (e) => {
-            if (e.code === 'Space' && !isHolding) {
-                e.preventDefault();
-                isHolding = true;
-                statusEl.innerText = "LISTENING...";
-                statusEl.className = "active";
-                answerEl.style.opacity = "0.3";
-                recognition.start();
+            if (e.key.toLowerCase() === 'o') {
+                if (document.documentElement.requestFullscreen) {
+                    document.documentElement.requestFullscreen();
+                }
+                return;
             }
+            unlock();
         });
 
-        window.addEventListener('keyup', (e) => {
-            if (e.code === 'Space') {
-                isHolding = false;
-                answerEl.style.opacity = "1";
-                recognition.stop();
-            }
-        });
+        const passwordInput = document.getElementById('passwordInput');
+        const toggleBtn = document.getElementById('togglePassword');
+        const showPass = () => passwordInput.type = 'text';
+        const hidePass = () => passwordInput.type = 'password';
+        toggleBtn.addEventListener('mousedown', showPass);
+        toggleBtn.addEventListener('mouseup', hidePass);
+        toggleBtn.addEventListener('mouseleave', hidePass);
 
-        // Error handling for speech
-        recognition.onerror = () => {
-            statusEl.innerText = "HOLD [SPACE] TO SPEAK";
-            statusEl.className = "";
-        };
+        const loginForm = document.getElementById('loginForm');
+        const loginFields = document.getElementById('login-fields');
+        const welcomeSection = document.getElementById('welcome-section');
+
+        loginForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            loginFields.style.display = 'none';
+            welcomeSection.style.display = 'flex';
+        });
     </script>
 </body>
 </html>
