@@ -248,7 +248,7 @@
         #bsod .qr-box img { width: 100%; height: 100%; }
         #bsod .info-text { font-size: 14px; line-height: 1.6; font-weight: 300; }
 
-        /* 碎裂横条效果样式 */
+        /* R键：蓝屏碎裂条 */
         .glitch-bar {
             position: fixed;
             left: 0;
@@ -259,186 +259,14 @@
             pointer-events: none;
             box-shadow: 0 0 10px rgba(0,0,0,0.5);
         }
-    </style>
-</head>
-<body>
 
-    <div id="boot-loader">
-        <div class="win-loader">
-            <div class="dot"></div>
-            <div class="dot"></div>
-            <div class="dot"></div>
-            <div class="dot"></div>
-            <div class="dot"></div>
-        </div>
-        <div class="loading-text">Patientez...</div>
-    </div>
-
-    <div id="bsod">
-        <div class="sad-face">:(</div>
-        <div class="main-text">
-            Votre ordinateur a rencontré un problème et doit redémarrer. Nous collectons simplement des informations relatives aux erreurs, puis nous allons redémarrer l'ordinateur pour vous.
-        </div>
-        <div class="percent">100% complété</div>
-        <div class="footer-section">
-            <div class="qr-box">
-                <img src="https://api.qrserver.com/v1/create-qr-code/?size=110x110&data=https://windows.com/stopcode" alt="QR">
-            </div>
-            <div class="info-text">
-                Pour plus d'informations sur ce problème et les solutions possibles, consultez https://www.windows.com/stopcode<br><br>
-                Si vous appelez un technicien, donnez-lui ces informations :<br>
-                Code d'arrêt : <span style="font-weight: 600;">CRITICAL_PROCESS_DIED</span><br>
-                Élément ayant échoué : ntoskrnl.exe
-            </div>
-        </div>
-    </div>
-
-    <div class="main-background">
-        <div id="lock-screen">
-            <div class="time-display" id="time">00:00</div>
-            <div class="date-display" id="date">Loading...</div>
-        </div>
-
-        <div class="login-overlay">
-            <div class="user-section" id="login-fields">
-                <div class="avatar-container">
-                    <img src="avatar.jpg" alt="Avatar">
-                </div>
-                <div class="display-name">Autre utilisateur</div>
-                <form id="loginForm">
-                    <div class="input-group">
-                        <input type="text" placeholder="Nom d'utilisateur" spellcheck="false">
-                    </div>
-                    <div class="input-group">
-                        <input type="password" id="passwordInput" placeholder="Mot de passe">
-                        <div class="password-controls">
-                            <button type="button" class="control-btn eye-toggle" id="togglePassword">
-                                <svg viewBox="0 0 24 24"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
-                            </button>
-                            <button type="submit" class="control-btn submit-arrow">
-                                <svg viewBox="0 0 24 24"><path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z"/></svg>
-                            </button>
-                        </div>
-                    </div>
-                </form>
-                <div class="domain-text">Se connecter à : ECOLE_DOMAIN</div>
-            </div>
-
-            <div class="user-section" id="welcome-section">
-                <div class="avatar-container">
-                    <img src="avatar.jpg" alt="Avatar">
-                </div>
-                <div class="display-name">Zhou, Z</div>
-                <div class="welcome-msg-container">
-                    <div class="welcome-text">Bienvenue</div>
-                    <div class="win-loader welcome-loader">
-                        <div class="dot"></div>
-                        <div class="dot"></div>
-                        <div class="dot"></div>
-                        <div class="dot"></div>
-                        <div class="dot"></div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="system-tray">
-                <svg viewBox="0 0 24 24"><path d="M15.91 13.34L12 17.25l-3.91-3.91a5.5 5.5 0 1 1 7.82 0z"/></svg>
-                <svg viewBox="0 0 24 24"><path d="M12 2c1.1 0 2 .9 2 2s-.9 2-2 2-2-.9-2-2 .9-2 2-2zm9 7h-6v13h-2v-6h-2v6H9V9H3V7h18v2z"/></svg>
-                <svg viewBox="0 0 24 24"><path d="M13 3h-2v10h2V3zm4.83 2.17l-1.42 1.42C17.99 7.86 19 9.81 19 12c0 3.87-3.13 7-7 7s-7-3.13-7-7c0-2.19 1.01-4.14 2.58-5.42L6.17 5.17C4.23 6.82 3 9.26 3 12c0 4.97 4.03 9 9 9s9-4.03 9-9c0-2.74-1.23-5.18-3.17-6.83z"/></svg>
-            </div>
-        </div>
-    </div>
-
-    <script>
-        let currentState = 'patientez'; 
-
-        function triggerGlitch() {
-            for(let i = 0; i < 8; i++) {
-                const bar = document.createElement('div');
-                bar.className = 'glitch-bar';
-                const height = Math.random() * 50 + 2;
-                bar.style.height = height + 'px';
-                bar.style.top = Math.random() * 100 + '%';
-                bar.style.opacity = Math.random();
-                bar.style.left = (Math.random() * 10 - 5) + 'px';
-                document.body.appendChild(bar);
-                
-                setTimeout(() => bar.remove(), Math.random() * 150 + 50);
-            }
-        }
-
-        function updateClock() {
-            const now = new Date();
-            const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
-            const options = { weekday: 'long', day: 'numeric', month: 'long' };
-            const dateStr = now.toLocaleDateString('fr-FR', options);
-            document.getElementById('time').textContent = timeStr;
-            document.getElementById('date').textContent = dateStr.charAt(0).toUpperCase() + dateStr.slice(1);
-        }
-        setInterval(updateClock, 1000);
-        updateClock();
-
-        window.addEventListener('keydown', (e) => {
-            const key = e.key.toLowerCase();
-
-            if (key === 'o') {
-                if (!document.fullscreenElement) {
-                    document.documentElement.requestFullscreen().catch(() => {});
-                }
-                return;
-            }
-
-            if (key === 'm' && currentState === 'patientez') {
-                setTimeout(() => {
-                    document.getElementById('boot-loader').style.opacity = '0';
-                    setTimeout(() => {
-                        document.getElementById('boot-loader').style.display = 'none';
-                        currentState = 'login';
-                    }, 1000);
-                }, 3000);
-            }
-
-            if (key === 'n' && currentState === 'bienvenue') {
-                setTimeout(() => {
-                    document.getElementById('bsod').style.display = 'flex';
-                    currentState = 'bsod';
-                }, 3000);
-            }
-
-            if (key === 'r' && currentState === 'bsod') {
-                triggerGlitch();
-            }
-
-            if (currentState === 'login') {
-                unlock();
-            }
-        });
-
-        const lockScreen = document.getElementById('lock-screen');
-        const unlock = () => {
-            lockScreen.classList.add('hidden');
-            document.body.classList.add('unlocked');
-        };
-        lockScreen.addEventListener('click', unlock);
-
-        const passwordInput = document.getElementById('passwordInput');
-        const toggleBtn = document.getElementById('togglePassword');
-        const showPass = () => passwordInput.type = 'text';
-        const hidePass = () => passwordInput.type = 'password';
-        toggleBtn.addEventListener('mousedown', showPass);
-        toggleBtn.addEventListener('mouseup', hidePass);
-        toggleBtn.addEventListener('mouseleave', hidePass);
-
-        const loginForm = document.getElementById('loginForm');
-        const loginFields = document.getElementById('login-fields');
-        const welcomeSection = document.getElementById('welcome-section');
-
-        loginForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            loginFields.style.display = 'none';
-            welcomeSection.style.display = 'flex';
-            currentState = 'bienvenue';
-        });
-    </script>
-</body>
-</html>
+        /* --- 6. E键：严重花屏损坏 (Broken Screen) --- */
+        #broken-screen {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 20000;
+            background: 
+                /* 局部黑色死区 */
+                linear-gradient(90deg, transparent 10%, black 10%, black 15%, transparent 15%),
+                linear-
