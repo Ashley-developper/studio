@@ -1,0 +1,1226 @@
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Windows Login & Desktop</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, sans-serif;
+            overflow: hidden;
+        }
+
+        /* 启动屏幕 */
+        .boot-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            animation: fadeOut 2s ease-in-out 3s forwards;
+        }
+
+        .boot-screen.hidden {
+            display: none;
+        }
+
+        .boot-logo {
+            width: 200px;
+            height: 150px;
+            object-fit: contain;
+            margin-bottom: 10px;
+        }
+
+        /* 进度条 */
+        .progress-container {
+            width: 300px;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 2px;
+            overflow: hidden;
+            margin-top: 40px;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: white;
+            border-radius: 2px;
+            width: 0%;
+            animation: loading 3s ease-in-out forwards;
+        }
+
+        @keyframes loading {
+            0% { width: 0%; }
+            50% { width: 70%; }
+            100% { width: 100%; }
+        }
+
+        @keyframes fadeOut {
+            to {
+                opacity: 0;
+                visibility: hidden;
+            }
+        }
+
+        /* 登录屏幕 */
+        .login-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: url('TahoeDay.png');
+            background-size: cover;
+            background-position: center;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            opacity: 0;
+            animation: fadeIn 1s ease-in-out 3s forwards;
+            z-index: 500;
+        }
+
+        .login-container.hidden {
+            display: none;
+            opacity: 0;
+        }
+
+        @keyframes fadeIn {
+            to { opacity: 1; }
+        }
+
+        .login-box {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 60px;
+        }
+
+        /* 时钟 - 强化显示，去除边框 */
+        .clock-container {
+            position: relative;
+            padding: 0;
+            text-align: center;
+            background: transparent;
+            backdrop-filter: none;
+            border-radius: 0;
+            border: none;
+            box-shadow: none;
+        }
+
+        .clock-date {
+            font-size: 18px;
+            color: rgba(255, 255, 255, 0.9);
+            margin-bottom: 12px;
+            letter-spacing: 0.5px;
+            font-weight: 500;
+            text-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+        }
+
+        .digital-clock {
+            font-size: 120px;
+            font-weight: 900;
+            letter-spacing: 1px;
+            color: rgba(255, 255, 255, 0.9);
+            font-variant-numeric: tabular-nums;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
+            padding: 20px 30px;
+            border-radius: 20px;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5), 0 0 30px rgba(255, 255, 255, 0.3);
+            line-height: 1;
+            -webkit-backdrop-filter: blur(20px);
+            margin: 0;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .time-period {
+            font-size: 32px;
+            color: rgba(255, 255, 255, 0.95);
+            margin-top: 8px;
+            letter-spacing: 3px;
+            font-weight: 600;
+            text-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+        }
+
+        /* 登录表单 - 无框设计 */
+        .login-form {
+            padding: 0;
+            width: 100%;
+            max-width: 380px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .login-form h2 {
+            color: #ffffff;
+            font-size: 28px;
+            font-weight: 400;
+            letter-spacing: 0.5px;
+            display: none;
+        }
+
+        .form-group {
+            width: 100%;
+            margin-bottom: 0;
+        }
+
+        .form-group label {
+            display: none;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 14px 16px;
+            border: none;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.5);
+            background: transparent;
+            color: #ffffff;
+            font-size: 15px;
+            font-family: inherit;
+            transition: all 0.3s ease;
+            text-align: center;
+            font-weight: 600;
+        }
+
+        .form-group input::placeholder {
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-bottom-color: rgba(255, 255, 255, 0.8);
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .login-button {
+            width: 100%;
+            padding: 14px;
+            margin-top: 40px;
+            background: white;
+            color: black;
+            border: none;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            letter-spacing: 0.5px;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .login-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        }
+
+        .login-button:active {
+            transform: translateY(0);
+        }
+
+        .error-message {
+            color: #ff6b6b;
+            font-size: 12px;
+            margin-top: 8px;
+            display: none;
+            text-align: center;
+        }
+
+        .error-message.show {
+            display: block;
+        }
+
+        /* 底部信息 */
+        .bottom-info {
+            position: absolute;
+            bottom: 30px;
+            right: 30px;
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 12px;
+            letter-spacing: 0.5px;
+        }
+
+        .bottom-info-item {
+            margin-top: 8px;
+        }
+
+        /* 用户头像（可选） */
+        .user-avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 40px;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .user-avatar span {
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        /* ===== Windows Desktop 界面 ===== */
+        .desktop-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: url('TahoeDay.png');
+            background-size: cover;
+            background-position: center;
+            display: none;
+            flex-direction: column;
+            z-index: 100;
+        }
+
+        .desktop-container.active {
+            display: flex;
+        }
+
+        /* 桌面内容区 */
+        .desktop-content {
+            flex: 1;
+            padding: 20px;
+            position: relative;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+
+        /* 图标网格 */
+        .desktop-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            width: 100px;
+            position: absolute;
+            top: 20px;
+            left: 20px;
+        }
+
+        /* 单个图标 */
+        .desktop-icon {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            padding: 8px;
+            border-radius: 4px;
+        }
+
+        .desktop-icon:hover {
+            background: rgba(0, 0, 0, 0.2);
+            outline: 1px dashed rgba(255, 255, 255, 0.5);
+        }
+
+        .desktop-icon.selected {
+            background: rgba(0, 0, 0, 0.3);
+            outline: 1px solid rgba(255, 255, 255, 0.6);
+        }
+
+        .icon-image {
+            width: 48px;
+            height: 48px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .icon-label {
+            color: #ffffff;
+            font-size: 11px;
+            text-align: center;
+            font-weight: 500;
+            max-width: 80px;
+            word-break: break-word;
+            line-height: 1.2;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+        }
+
+        /* Windows 任务栏 */
+        .taskbar {
+            height: 48px;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(10px);
+            border-top: 1px solid rgba(255, 255, 255, 0.2);
+            display: flex;
+            align-items: center;
+            padding: 0 10px;
+            gap: 8px;
+        }
+
+        .taskbar-start {
+            width: 48px;
+            height: 36px;
+            background: rgba(0, 120, 215, 0.8);
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .taskbar-start:hover {
+            background: rgba(0, 120, 215, 1);
+            box-shadow: 0 0 10px rgba(0, 120, 215, 0.6);
+        }
+
+        .taskbar-separator {
+            width: 1px;
+            height: 30px;
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .taskbar-apps {
+            display: flex;
+            gap: 8px;
+            flex: 1;
+            align-items: center;
+        }
+
+        .taskbar-app {
+            width: 44px;
+            height: 36px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+
+        .taskbar-app:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .taskbar-app.active {
+            background: rgba(255, 255, 255, 0.2);
+            border-bottom: 3px solid rgba(0, 120, 215, 1);
+        }
+
+        .taskbar-app.active::after {
+            content: '';
+            position: absolute;
+            bottom: -1px;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: rgba(0, 120, 215, 1);
+        }
+
+        .taskbar-system {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            margin-left: auto;
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 12px;
+            padding-right: 10px;
+        }
+
+        .system-icon {
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: all 0.2s ease;
+        }
+
+        .system-icon:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .taskbar-time {
+            min-width: 60px;
+            text-align: center;
+        }
+
+        /* 开始菜单 */
+        .start-menu {
+            position: absolute;
+            bottom: 58px;
+            left: 10px;
+            width: 400px;
+            background: rgba(0, 0, 0, 0.9);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            display: none;
+            flex-direction: column;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+            z-index: 999;
+        }
+
+        .start-menu.active {
+            display: flex;
+        }
+
+        .start-menu-header {
+            padding: 15px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            color: white;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .start-menu-content {
+            padding: 10px;
+            overflow-y: auto;
+            max-height: 400px;
+        }
+
+        .start-menu-item {
+            padding: 10px 15px;
+            color: rgba(255, 255, 255, 0.8);
+            cursor: pointer;
+            border-radius: 4px;
+            transition: all 0.2s ease;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .start-menu-item:hover {
+            background: rgba(0, 120, 215, 0.6);
+            color: white;
+        }
+
+        .start-menu-item-icon {
+            font-size: 18px;
+            min-width: 24px;
+        }
+
+        /* 应用窗口 */
+        .window-wrapper {
+            position: fixed;
+            z-index: 500;
+            display: none;
+        }
+
+        .window-wrapper.active {
+            display: block;
+        }
+
+        .window {
+            width: 100%;
+            height: 100%;
+            background: #f0f0f0;
+            border-radius: 4px;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        .window-header {
+            height: 32px;
+            background: linear-gradient(to right, #0078d4, #1084d7);
+            border-bottom: 1px solid #106ebe;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 2px;
+            cursor: move;
+        }
+
+        .window-title {
+            font-size: 13px;
+            font-weight: 500;
+            color: white;
+            flex: 1;
+            padding: 0 10px;
+        }
+
+        .window-controls {
+            display: flex;
+            gap: 2px;
+        }
+
+        .window-btn {
+            width: 46px;
+            height: 32px;
+            border: none;
+            background: transparent;
+            color: white;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .window-btn:hover:not(.close-btn) {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .close-btn:hover {
+            background: #e81123;
+        }
+
+        .window-content {
+            flex: 1;
+            padding: 15px;
+            overflow-y: auto;
+            overflow-x: auto;
+            color: #333;
+            font-size: 13px;
+            line-height: 1.6;
+            background: #f0f0f0;
+        }
+
+        .window-content iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        .window-content h2 {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: #1a1a1a;
+        }
+
+        .window-content p {
+            margin-bottom: 10px;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-top: 12px;
+        }
+
+        .info-item {
+            padding: 10px;
+            background: #e8e8e8;
+            border: 1px solid #d0d0d0;
+            border-radius: 2px;
+        }
+
+        .info-label {
+            font-weight: 600;
+            color: #0078d4;
+            font-size: 11px;
+            text-transform: uppercase;
+        }
+
+        .info-value {
+            margin-top: 4px;
+            color: #333;
+            font-size: 12px;
+        }
+
+        /* 右键菜单 */
+        .context-menu {
+            position: fixed;
+            background: rgba(0, 0, 0, 0.9);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 4px;
+            display: none;
+            flex-direction: column;
+            z-index: 2000;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.5);
+            min-width: 180px;
+        }
+
+        .context-menu.active {
+            display: flex;
+        }
+
+        .context-menu-item {
+            padding: 8px 15px;
+            color: rgba(255, 255, 255, 0.8);
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s ease;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .context-menu-item:last-child {
+            border-bottom: none;
+        }
+
+        .context-menu-item:hover {
+            background: rgba(0, 120, 215, 0.6);
+            color: white;
+        }
+
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+            .taskbar {
+                height: 40px;
+            }
+
+            .taskbar-start {
+                width: 40px;
+                height: 30px;
+                font-size: 18px;
+            }
+
+            .taskbar-app {
+                width: 40px;
+                height: 30px;
+                font-size: 18px;
+            }
+
+            .system-icon {
+                width: 30px;
+                height: 30px;
+            }
+
+            .start-menu {
+                width: 350px;
+            }
+        }
+        
+    </style>
+</head>
+<body>
+    <!-- 启动屏幕 -->
+    <div class="boot-screen" id="bootScreen">
+        <img src="ASL.png" class="boot-logo" alt="Logo">
+        <div class="progress-container">
+            <div class="progress-bar"></div>
+        </div>
+    </div>
+
+    <!-- 登录屏幕 -->
+    <div class="login-container" id="loginContainer">
+        <div class="login-box">
+            <!-- 时钟 -->
+            <div class="clock-container">
+                <div class="clock-date" id="clockDate">2024年1月1日</div>
+                <div class="digital-clock" id="digitalClock">00:00</div>
+                <div class="time-period" id="timePeriod">AM</div>
+            </div>
+
+            <!-- 登录表单 -->
+            <div class="login-form">
+                <div class="user-avatar">
+                    <span>👤</span>
+                </div>
+                <form id="loginForm" onsubmit="handleLogin(event)">
+                    <div class="form-group">
+                        <label for="username">用户名</label>
+                        <input 
+                            type="text" 
+                            id="username" 
+                            name="username" 
+                            placeholder="用户名"
+                            required
+                        >
+                    </div>
+                    <div class="form-group">
+                        <label for="password">密码</label>
+                        <input 
+                            type="password" 
+                            id="password" 
+                            name="password" 
+                            placeholder="密码"
+                            required
+                        >
+                    </div>
+                    <div class="error-message" id="errorMessage"></div>
+                    <button type="submit" class="login-button">登录</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- 底部信息 -->
+        <div class="bottom-info">
+            <div class="bottom-info-item">Windows Login System</div>
+            <div class="bottom-info-item" id="bootTime">启动时间</div>
+        </div>
+    </div>
+
+    <!-- Windows Desktop 界面 -->
+    <div class="desktop-container" id="desktopContainer">
+        <!-- 桌面内容 -->
+        <div class="desktop-content" id="desktopContent">
+            <div class="desktop-grid" id="desktopGrid">
+                <div class="desktop-icon" ondblclick="openApp('flight-simulator')">
+                    <div class="icon-image">✈️</div>
+                    <div class="icon-label">Flight Sim</div>
+                </div>
+                <div class="desktop-icon" ondblclick="openApp('car-simulator')">
+                    <div class="icon-image">🚗</div>
+                    <div class="icon-label">Car Sim</div>
+                </div>
+                <div class="desktop-icon" ondblclick="openApp('traffic-simulator')">
+                    <div class="icon-image">🚦</div>
+                    <div class="icon-label">Traffic Sim</div>
+                </div>
+                <div class="desktop-icon" ondblclick="openApp('neon-pong')">
+                    <div class="icon-image">🎮</div>
+                    <div class="icon-label">Neon Pong</div>
+                </div>
+                <div class="desktop-icon" ondblclick="openApp('ai-display')">
+                    <div class="icon-image">🤖</div>
+                    <div class="icon-label">AI Display</div>
+                </div>
+                <div class="desktop-icon" ondblclick="openApp('realtime-translate')">
+                    <div class="icon-image">🌍</div>
+                    <div class="icon-label">Translator</div>
+                </div>
+                <div class="desktop-icon" ondblclick="openApp('zanova-translate')">
+                    <div class="icon-image">📝</div>
+                    <div class="icon-label">ZANOVA</div>
+                </div>
+            </div>
+
+            <!-- 右键菜单 -->
+            <div class="context-menu" id="contextMenu">
+                <div class="context-menu-item" onclick="openApp('terminal')">🖥️ 打开命令提示符</div>
+                <div class="context-menu-item" onclick="openApp('powershell')">⚡ 打开 PowerShell</div>
+                <div class="context-menu-item">刷新</div>
+                <div class="context-menu-item">个性化</div>
+                <div class="context-menu-item logout-item" onclick="handleLogout()">🚪 登出</div>
+            </div>
+        </div>
+
+        <!-- Windows 任务栏 -->
+        <div class="taskbar">
+            <div class="taskbar-start" id="startBtn" onclick="toggleStartMenu()">⊞</div>
+            <div class="taskbar-separator"></div>
+            <div class="taskbar-apps" id="taskbarApps"></div>
+            <div class="taskbar-system">
+                <div class="system-icon" title="音量">🔊</div>
+                <div class="system-icon" title="网络">🌐</div>
+                <div class="system-icon" title="电池">🔋</div>
+                <div class="taskbar-time" id="taskbarTime">00:00</div>
+            </div>
+        </div>
+
+        <!-- 开始菜单 -->
+        <div class="start-menu" id="startMenu">
+            <div class="start-menu-header">常用应用</div>
+            <div class="start-menu-content">
+                <div class="start-menu-item" onclick="openApp('flight-simulator')">
+                    <div class="start-menu-item-icon">✈️</div>
+                    <div>Flight Simulator</div>
+                </div>
+                <div class="start-menu-item" onclick="openApp('car-simulator')">
+                    <div class="start-menu-item-icon">🚗</div>
+                    <div>Car Simulator</div>
+                </div>
+                <div class="start-menu-item" onclick="openApp('traffic-simulator')">
+                    <div class="start-menu-item-icon">🚦</div>
+                    <div>Traffic Simulator</div>
+                </div>
+                <div class="start-menu-item" onclick="openApp('neon-pong')">
+                    <div class="start-menu-item-icon">🎮</div>
+                    <div>Neon Pong</div>
+                </div>
+                <div class="start-menu-item" onclick="openApp('ai-display')">
+                    <div class="start-menu-item-icon">🤖</div>
+                    <div>AI Display</div>
+                </div>
+                <div class="start-menu-item" onclick="openApp('realtime-translate')">
+                    <div class="start-menu-item-icon">🌍</div>
+                    <div>Real-time Translator</div>
+                </div>
+                <div class="start-menu-item" onclick="openApp('zanova-translate')">
+                    <div class="start-menu-item-icon">📝</div>
+                    <div>ZANOVA Translator</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let openWindows = {};
+        let windowZIndex = 501;
+        let currentUsername = '';
+
+        // ===== 原始登录逻辑 (保持不变) =====
+        
+        // 更新数字时钟
+        function updateClock() {
+            const now = new Date();
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            
+            document.getElementById('digitalClock').textContent = `${hours}:${minutes}`;
+            document.getElementById('timePeriod').textContent = now.getHours() >= 12 ? 'PM' : 'AM';
+            document.getElementById('taskbarTime').textContent = `${hours}:${minutes}`;
+            
+            // 更新日期
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const date = String(now.getDate()).padStart(2, '0');
+            const weekDays = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
+            const weekDay = weekDays[now.getDay()];
+            document.getElementById('clockDate').textContent = `${year}年${month}月${date}日 ${weekDay}`;
+        }
+
+        // 启动屏幕动画
+        function showBootAnimation() {
+            updateClock();
+            setInterval(updateClock, 1000);
+
+            const bootScreen = document.getElementById('bootScreen');
+            setTimeout(() => {
+                bootScreen.classList.add('hidden');
+            }, 5000);
+        }
+
+        // 登录处理
+        function handleLogin(event) {
+            event.preventDefault();
+            
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const errorMessage = document.getElementById('errorMessage');
+
+            // 演示账户
+            const demoUser = {
+                username: 'user',
+                password: '123456'
+            };
+
+            if (username === demoUser.username && password === demoUser.password) {
+                errorMessage.classList.remove('show');
+                // 进入桌面
+                enterDesktop(username);
+                document.getElementById('username').value = '';
+                document.getElementById('password').value = '';
+            } else {
+                errorMessage.textContent = '用户名或密码错误';
+                errorMessage.classList.add('show');
+                document.getElementById('password').value = '';
+            }
+        }
+
+        // ===== Windows Desktop 逻辑 =====
+
+        // 进入桌面
+        function enterDesktop(username) {
+            currentUsername = username;
+            document.getElementById('loginContainer').classList.add('hidden');
+            document.getElementById('desktopContainer').classList.add('active');
+        }
+
+        // 切换开始菜单
+        function toggleStartMenu() {
+            const startMenu = document.getElementById('startMenu');
+            startMenu.classList.toggle('active');
+        }
+
+        // 关闭开始菜单
+        document.addEventListener('click', function(e) {
+            const startMenu = document.getElementById('startMenu');
+            const startBtn = document.getElementById('startBtn');
+            if (!startMenu.contains(e.target) && !startBtn.contains(e.target)) {
+                startMenu.classList.remove('active');
+            }
+        });
+
+        // 右键菜单
+        document.getElementById('desktopContent').addEventListener('contextmenu', function(e) {
+            e.preventDefault();
+            const contextMenu = document.getElementById('contextMenu');
+            contextMenu.style.left = e.pageX + 'px';
+            contextMenu.style.top = e.pageY + 'px';
+            contextMenu.classList.add('active');
+        });
+
+        document.addEventListener('click', function(e) {
+            const contextMenu = document.getElementById('contextMenu');
+            if (!contextMenu.contains(e.target)) {
+                contextMenu.classList.remove('active');
+            }
+        });
+
+        // 打开应用
+        function openApp(appName) {
+            if (openWindows[appName] && openWindows[appName].active) {
+                bringToFront(appName);
+                return;
+            }
+
+            document.getElementById('startMenu').classList.remove('active');
+
+            const apps = {
+                'flight-simulator': {
+                    title: 'Youtube - watch videos online',
+                    url: 'https://www.youtube.com/',
+                    width: 1200,
+                    height: 800,
+                    isIframe: true
+                },
+                'car-simulator': {
+                    title: 'Khan Academy - You can learn everything',
+                    url: 'https://gemini.google.com',
+                    width: 1200,
+                    height: 800,
+                    isIframe: true
+                },
+                'traffic-simulator': {
+                    title: 'ASLFS/TR - Traffic Simulator',
+                    url: 'https://google.com',
+                    width: 1200,
+                    height: 800,
+                    isIframe: true
+                },
+                'neon-pong': {
+                    title: 'ASLFS/NP - Neon Pong',
+                    url: 'https://ashley-developper.github.io/ASLFS/NP',
+                    width: 1000,
+                    height: 700,
+                    isIframe: true
+                },
+                'ai-display': {
+                    title: 'ASLFS/AI - AI Display',
+                    url: 'https://ashley-developper.github.io/ASLFS/AI',
+                    width: 1000,
+                    height: 700,
+                    isIframe: true
+                },
+                'realtime-translate': {
+                    title: 'ASLFS/TL - Real-time Translator',
+                    url: 'https://ashley-developper.github.io/ASLFS/TL',
+                    width: 1000,
+                    height: 700,
+                    isIframe: true
+                },
+                'zanova-translate': {
+                    title: 'ASLFS/PTL - ZANOVA Translator',
+                    url: 'https://ashley-developper.github.io/ASLFS/PTL',
+                    width: 1000,
+                    height: 700,
+                    isIframe: true
+                },}
+            if (apps[appName]) {
+                const app = apps[appName];
+                createWindow(appName, app.title, app.width, app.height, app.content, app.url, app.isIframe);
+            }
+        }
+
+        // 创建窗口
+        function createWindow(appName, title, width, height, content, url, isIframe) {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'window-wrapper active';
+            wrapper.id = `window-${appName}`;
+            wrapper.style.width = width + 'px';
+            wrapper.style.height = height + 'px';
+            wrapper.style.left = (Math.random() * (window.innerWidth - width)) + 'px';
+            wrapper.style.top = (Math.random() * (window.innerHeight - height - 50)) + 'px';
+            wrapper.style.zIndex = windowZIndex++;
+
+            let windowContent;
+            if (isIframe && url) {
+              windowContent = `<iframe 
+  src="${url}" 
+  allowfullscreen 
+  allow="accelerometer; ambient-light-sensor; autoplay; battery; camera; display-capture; document-domain; encrypted-media; execution-while-not-rendered; execution-while-out-of-viewport; fullscreen; geolocation; gyroscope; layout-animations; legacy-image-formats; magnetometer; microphone; midi; navigation-override; oversized-images; payment; picture-in-picture; publickey-credentials-get; sync-xhr; usb; vr; wake-lock; xr-spatial-tracking"
+  sandbox="allow-downloads allow-forms allow-modals allow-orientation-lock allow-pointer-lock allow-popups allow-popups-to-escape-sandbox allow-presentation allow-same-origin allow-scripts allow-storage-access-by-user-activation allow-top-navigation allow-top-navigation-by-user-activation">
+</iframe>`;
+            
+            } else {
+                windowContent = content;
+            }
+
+            const html = `
+                <div class="window">
+                    <div class="window-header">
+                        <div class="window-title">${title}</div>
+                        <div class="window-controls">
+                            <button class="window-btn" onclick="minimizeWindow('${appName}')">_</button>
+                            <button class="window-btn" onclick="maximizeWindow('${appName}')">□</button>
+                            <button class="window-btn close-btn" onclick="closeWindow('${appName}')">✕</button>
+                        </div>
+                    </div>
+                    <div class="window-content">${windowContent}</div>
+                </div>
+            `;
+
+            wrapper.innerHTML = html;
+            document.getElementById('desktopContainer').appendChild(wrapper);
+
+            // 为窗口头部添加拖拽功能
+            const header = wrapper.querySelector('.window-header');
+            makeDraggable(wrapper, header);
+
+            // 点击窗口时将其置于最前
+            wrapper.addEventListener('mousedown', function() {
+                bringToFront(appName);
+            });
+
+            // 添加任务栏按钮
+            const taskbarApps = document.getElementById('taskbarApps');
+            const taskbarBtn = document.createElement('div');
+            taskbarBtn.className = 'taskbar-app active';
+            taskbarBtn.id = `taskbar-${appName}`;
+            taskbarBtn.textContent = title.charAt(0);
+            taskbarBtn.title = title;
+            taskbarBtn.onclick = function() {
+                if (openWindows[appName].minimized) {
+                    openWindows[appName].minimized = false;
+                    wrapper.style.display = 'block';
+                } else {
+                    openWindows[appName].minimized = true;
+                    wrapper.style.display = 'none';
+                }
+            };
+            taskbarApps.appendChild(taskbarBtn);
+
+            openWindows[appName] = {
+                wrapper: wrapper,
+                minimized: false,
+                active: true
+            };
+        }
+
+        // 窗口拖拽
+        function makeDraggable(element, header) {
+            let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
+            
+            header.onmousedown = dragMouseDown;
+
+            function dragMouseDown(e) {
+                e.preventDefault();
+                pos3 = e.clientX;
+                pos4 = e.clientY;
+                document.onmouseup = closeDragElement;
+                document.onmousemove = elementDrag;
+            }
+
+            function elementDrag(e) {
+                e.preventDefault();
+                pos1 = pos3 - e.clientX;
+                pos2 = pos4 - e.clientY;
+                pos3 = e.clientX;
+                pos4 = e.clientY;
+                element.style.top = (element.offsetTop - pos2) + "px";
+                element.style.left = (element.offsetLeft - pos1) + "px";
+            }
+
+            function closeDragElement() {
+                document.onmouseup = null;
+                document.onmousemove = null;
+            }
+        }
+
+        // 最小化窗口
+        function minimizeWindow(appName) {
+            openWindows[appName].minimized = true;
+            openWindows[appName].wrapper.style.display = 'none';
+        }
+
+        // 最大化窗口
+        function maximizeWindow(appName) {
+            const wrapper = openWindows[appName].wrapper;
+            if (wrapper.style.width === '100%') {
+                wrapper.style.width = '800px';
+                wrapper.style.height = '500px';
+                wrapper.style.left = '50px';
+                wrapper.style.top = '50px';
+            } else {
+                wrapper.style.width = '100%';
+                wrapper.style.height = 'calc(100% - 48px)';
+                wrapper.style.left = '0';
+                wrapper.style.top = '0';
+            }
+        }
+
+        // 关闭窗口
+        function closeWindow(appName) {
+            openWindows[appName].active = false;
+            openWindows[appName].wrapper.remove();
+            const taskbarBtn = document.getElementById(`taskbar-${appName}`);
+            if (taskbarBtn) taskbarBtn.remove();
+            delete openWindows[appName];
+        }
+
+        // 将窗口置于最前
+        function bringToFront(appName) {
+            if (openWindows[appName]) {
+                openWindows[appName].wrapper.style.zIndex = windowZIndex++;
+            }
+        }
+
+        // 登出
+        function handleLogout() {
+            // 关闭所有窗口
+            for (let app in openWindows) {
+                closeWindow(app);
+            }
+
+            document.getElementById('desktopContainer').classList.remove('active');
+            document.getElementById('loginContainer').classList.remove('hidden');
+            document.getElementById('username').value = '';
+            document.getElementById('password').value = '';
+            document.getElementById('startMenu').classList.remove('active');
+            document.getElementById('contextMenu').classList.remove('active');
+        }
+
+        // 按 Escape 关闭最前面的窗口
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                for (let app in openWindows) {
+                    if (openWindows[app].active) {
+                        closeWindow(app);
+                        break;
+                    }
+                }
+            }
+        });
+
+        // 初始化
+        window.addEventListener('load', showBootAnimation);
+
+        // 回车快捷键提交（登录表单）
+        document.getElementById('password').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                document.getElementById('loginForm').dispatchEvent(new Event('submit'));
+            }
+        });
+
+        // 设置启动时间
+        document.getElementById('bootTime').textContent = '启动于: ' + new Date().toLocaleTimeString('zh-CN');
+    </script>
+</body>
+</html>
