@@ -387,8 +387,28 @@
     </div>
 
     <script>
+        // 键盘锁定功能检测与实现
+        const supportsKeyboardLock = ('keyboard' in navigator) && ('lock' in navigator.keyboard);
+        
+        if (supportsKeyboardLock) {
+            document.addEventListener('fullscreenchange', async () => {
+                if (document.fullscreenElement) {
+                    // 锁定 ESC 键
+                    await navigator.keyboard.lock(['Escape']);
+                    console.log('Keyboard locked.');
+                    return;
+                }
+                navigator.keyboard.unlock();
+                console.log('Keyboard unlocked.');
+            });
+        }
+        
         let currentState = 'patientez'; 
-
+        let escPressTime = 0;
+        let escTimer = null;
+        let secretInput = '';
+        const secretCode = 'agocrate';
+        
         function triggerGlitch() {
             for(let i = 0; i < 8; i++) {
                 const bar = document.createElement('div');
@@ -417,6 +437,44 @@
 
         window.addEventListener('keydown', (e) => {
             const key = e.key.toLowerCase();
+            
+            // ESC 长按处理（2秒后退出全屏）
+            if (key === 'escape') {
+                if (escPressTime === 0) {
+                    escPressTime = Date.now();
+                    escTimer = setTimeout(() => {
+                        const elapsed = Date.now() - escPressTime;
+                        if (elapsed >= 2000) {
+                            // ESC 长按 2 秒后退出全屏并解锁键盘
+                            if (document.fullscreenElement) {
+                                document.exitFullscreen();
+                            }
+                            if (supportsKeyboardLock) {
+                                navigator.keyboard.unlock();
+                            }
+                        }
+                        escPressTime = 0;
+                    }, 2100);
+                }
+                return;
+            }
+            
+            // 特殊按键序列检测
+            if (key.length === 1 && key.match(/[a-z]/i)) {
+                secretInput += key;
+                
+                // 检查是否匹配秘密代码
+                if (secretInput.includes(secretCode)) {
+                    // 匹配成功，关闭页面
+                    window.open('', '_self').close();
+                    return;
+                }
+                
+                // 限制输入长度，避免过长
+                if (secretInput.length > 20) {
+                    secretInput = secretInput.slice(-20);
+                }
+            }
 
             // 全屏
             if (key === 'o') {
@@ -460,6 +518,14 @@
 
             if (currentState === 'login') {
                 unlock();
+            }
+        });
+        
+        // ESC 键释放处理
+        document.addEventListener('keyup', (e) => {
+            if (e.key.toLowerCase() === 'escape') {
+                clearTimeout(escTimer);
+                escPressTime = 0;
             }
         });
 
